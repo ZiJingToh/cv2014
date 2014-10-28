@@ -38,21 +38,30 @@ class Image:
     Title provided. This Function is used to plot the Perspective Projection of
     4 Frames.
     """
-    
+
     #======================
     #Properties/Attributes.
     #======================
     intAttribute = None
-    
+
     #========
     #Methods.
     #========
-    def __init__(self):
+    def __init__(self, project_window, image_path):
         #===================
         #Constructor Method.
         #===================
+        self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)
+        self._view = self._image[:]
+
         self.intAttribute = 1
         print "intAttribute initialised to: " + str(self.intAttribute)
+
+    def getView(self):
+        """
+        Returns a copy of current view
+        """
+        return self._view[:]
 
     def persproj(self, array3DScPts, arrayCamTrans, matCamOrient, int_f = 1,
                  int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0, int_bv = 1,

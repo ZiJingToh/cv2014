@@ -17,8 +17,10 @@ Version      Date      Modified By                    Details
                                     quatmult, quat2rot, rotbyquatmult,
                                     rotbyrotmat.
 """
+from .inputmodehandler import InputModeHandler
 
-class Polygon:
+
+class Polygon(InputModeHandler):
     """
     **************
     Class Polygon.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from cs4243_proj.main import run
+from cs4243.project import ProjectWindow
 
 if __name__ == "__main__":
-    run("project.jpeg")
+    Project.run("project.jpeg")
