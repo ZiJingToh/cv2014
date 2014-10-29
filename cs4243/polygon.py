@@ -18,6 +18,7 @@ Version      Date      Modified By                    Details
                                     rotbyrotmat.
 """
 from .inputmodehandler import InputModeHandler
+import cv2
 
 
 class Polygon(InputModeHandler):
@@ -70,16 +71,42 @@ class Polygon(InputModeHandler):
     #Properties/Attributes.
     #======================
     intPolygons = None
-        
+
     #========
     #Methods.
     #========
-    def __init__(self):
+    def __init__(self, image_obj):
         #===================
         #Constructor Method.
         #===================
+        super(Polygon, self).__init__()
+        self._imageObj = image_obj
+
+        self._modeName = "Polygon"
+
+        # mouse event callback of the form
+        # { (EVENT, FLAGS):callback(x, y) }
+        self._mouseEvents = {(cv2.EVENT_LBUTTONUP, None,):self._UImouseClickPoint}
+
+        # keyboard event callback of the form
+        # { keychar:callback(key) }
+        self._keyboardEvents = {chr(127):self._UIdeleteLastPoint}
+
+
         self.intPolygons = 1
         print "intPolygons initialised to: " + str(self.intPolygons)       
+
+    def _UImouseClickPoint(self, x, y):
+        print "_UImouseClickPoint:",x,y
+
+    def _UIdeleteLastPoint(self):
+        print "_UIdeleteLastPoint"
+
+    def cleanup(self):
+        """
+        Cleanup after exiting state
+        """
+        print "Cleaning up after Polygon..."
 
     def normalise(self, listInput):
         #===============
@@ -354,7 +381,3 @@ class Polygon(InputModeHandler):
         intNewRows = int(intElements / 3)
         matRotatedPoints = np.reshape(matRotatedPoints, (intNewRows, 3))
         return(matRotatedPoints)
-
-    
-
-    

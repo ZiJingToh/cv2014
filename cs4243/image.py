@@ -16,6 +16,8 @@ Version      Date      Modified By                    Details
                                     persproj, plotproj.
 """
 
+import cv2
+
 class Image:
     """
     ************
@@ -53,6 +55,7 @@ class Image:
         #===================
         self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)
         self._view = self._image[:]
+        self._view = cv2.resize(self._view, (0,0), fx=0.6, fy=0.6)
 
         self.intAttribute = 1
         print "intAttribute initialised to: " + str(self.intAttribute)
