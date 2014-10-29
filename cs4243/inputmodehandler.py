@@ -1,3 +1,11 @@
+"""
+Base class for state classes to have custom mouse/keyboard callbacks for the
+main loop to access as a standard interface.
+
+Classes inheriting must implement their own 
+`handleKeyboardEvents` / `handleMouseEvents` OR use the included helper
+dictionaries _mouseEvents` / `_keyboardEvents` to specify events and callbacks.
+"""
 
 class InputModeHandler(object):
     def __init__(self):
@@ -14,18 +22,21 @@ class InputModeHandler(object):
     def handleKeyboardEvents(self, key):
         key = chr(key)
         if self._keyboardEvents.has_key(key):
-            print self._modeName + " handleKeyboardEvents:", key
+            print(self._modeName + " handleKeyboardEvents:", key)
             self._keyboardEvents[key]()
 
     def handleMouseEvents(self, event, x, y, flags, param):
         if self._mouseEvents.has_key((event, flags,)):
-            print self._modeName + " handleMouseEvents:", event, x, y, flags, param
+            print(self._modeName + " handleMouseEvents:",
+                  event, x, y, flags, param)
             self._mouseEvents[(event, flags,)](x, y)
 
         elif self._mouseEvents.has_key((event, None,)):
-            print self._modeName + " handleMouseEvents:", event, x, y, flags, param
+            print(self._modeName + " handleMouseEvents:",
+                  event, x, y, flags, param)
             self._mouseEvents[(event, None,)](x, y)
 
         elif self._mouseEvents.has_key((None, flags,)):
-            print self._modeName + " handleMouseEvents:", event, x, y, flags, param
+            print(self._modeName + " handleMouseEvents:",
+                  event, x, y, flags, param)
             self._mouseEvents[(None, flags,)](x, y)

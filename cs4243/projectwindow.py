@@ -1,18 +1,17 @@
-#!/usr/bin/env python
-
 """
+General Keys:
+Esc : Quit program
+F12 : Move to next state/mode
+
 States:
 
 1 - Polygon/Points mode
-    User driven selection/creation of polygons/points.
+    User driven selection/creation of points,
+    assignment of Z values to points
     Has inputs from user.
 
-2 - Projection resolution
-    No inputs from user.
-
-3 - Free look mode, movie generation
+2 - Free look mode, movie generation
     Has inputs from user to move camera around.
-
 """
 
 import cv2
@@ -38,12 +37,11 @@ class ProjectWindow(object):
     def _mainLoop(self):
         # main loop
         while(1):
-            # global keyboard events
-            # esc - quit program
-            # F12 - next state/step
             key = cv2.waitKey(1) & 0xFF
+            # Esc - quit program
             if key == 27:
                 break
+            # F12 - next state/mode
             if key == 15:
                 # exit if no more states
                 self._nextState()
@@ -58,7 +56,8 @@ class ProjectWindow(object):
         if self._state < len(STATES):
             self._stateObj = STATES[self._state](self._imageObj)
             # callback to handle mouse events
-            cv2.setMouseCallback(self._viewport, self._stateObj.handleMouseEvents)
+            cv2.setMouseCallback(self._viewport,
+                                 self._stateObj.handleMouseEvents)
         else:
             self._stateObj = None
 
