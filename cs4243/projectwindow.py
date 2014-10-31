@@ -31,8 +31,8 @@ class ProjectWindow(object):
         self._stateObj = None
         self._imageObj = None
 
-    def display(self):
-        cv2.imshow(self._viewport, self._imageObj.getView())
+    def display(self, view):
+        cv2.imshow(self._viewport, view)
 
     def _mainLoop(self):
         # main loop
@@ -54,7 +54,7 @@ class ProjectWindow(object):
             self._stateObj.cleanup()
         self._state += 1
         if self._state < len(STATES):
-            self._stateObj = STATES[self._state](self._imageObj)
+            self._stateObj = STATES[self._state](self, self._imageObj)
             # callback to handle mouse events
             cv2.setMouseCallback(self._viewport,
                                  self._stateObj.handleMouseEvents)
@@ -72,7 +72,7 @@ class ProjectWindow(object):
         self._nextState()
 
         # Initial display
-        self.display()
+        #self.display(self._imageObj.getView())
 
         self._mainLoop()
 

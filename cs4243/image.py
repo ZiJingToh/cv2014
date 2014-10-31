@@ -15,8 +15,9 @@ Version      Date      Modified By                    Details
                                     incorporating the Methods: __init__,
                                     persproj, plotproj.
 """
-
+import numpy as np
 import cv2
+
 
 class Image:
     """
@@ -55,7 +56,11 @@ class Image:
         #===================
         self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)
         self._view = self._image[:]
-        self._view = cv2.resize(self._view, (0,0), fx=0.6, fy=0.6)
+        self._view_scale = 0.65
+
+        # stores x,y,z world coords for each point
+        self._image_points = self._image.astype(np.int)
+        self._image_points *= 0
 
         self.intAttribute = 1
         print "intAttribute initialised to: " + str(self.intAttribute)
@@ -64,7 +69,34 @@ class Image:
         """
         Returns a copy of current view
         """
-        return self._view[:]
+        return cv2.resize(self._view, (0,0),
+                          fx=self._view_scale,
+                          fy=self._view_scale)
+
+    def getWidth(self):
+        return self._image.shape[1]
+
+    def getHeight(self):
+        return self._image.shape[0]
+
+    def getViewScale(self):
+        return self._view_scale
+
+    def getCoordsFor(self, x, y):
+        return self._image_points[y][x]
+
+    def setZFor(self, zValue, x, y ):
+        self._image_points[y][x][-1] = zValue
+
+    def convertToImageSpace(self, x, y):
+        x *= 1.0/self._view_scale
+        y *= 1.0/self._view_scale
+        return (int(x), int(y))
+
+    def convertToViewSpace(self, x, y):
+        x *= self._view_scale
+        y *= self._view_scale
+        return (int(x), int(y))
 
     def persproj(self, array3DScPts, arrayCamTrans, matCamOrient, int_f = 1,
                  int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0, int_bv = 1,

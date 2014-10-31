@@ -75,14 +75,22 @@ class Polygon(InputModeHandler):
     #========
     #Methods.
     #========
-    def __init__(self, image_obj):
+    def __init__(self, window, imageObj):
         #===================
         #Constructor Method.
         #===================
         super(Polygon, self).__init__()
-        self._imageObj = image_obj
+        self._window = window
+        self._imageObj = imageObj
+        self._view = self._imageObj.getView()
 
         self._modeName = "Polygon"
+
+        # set to store clicked points
+        self._points = []
+        self._selectedPoint = None
+        self._depthStr = ""
+        self._clearSetPoints()
 
         # mouse event callback of the form
         # { (EVENT, FLAGS):callback(x, y) }
@@ -90,17 +98,100 @@ class Polygon(InputModeHandler):
 
         # keyboard event callback of the form
         # { keychar:callback(key) }
-        self._keyboardEvents = {chr(127):self._UIdeleteLastPoint}
-
+        self._keyboardEvents = {chr(127):self._UIdeleteLastPoint, # delete key
+                                "0":self._UIenterDepthValue,
+                                "1":self._UIenterDepthValue,
+                                "2":self._UIenterDepthValue,
+                                "3":self._UIenterDepthValue,
+                                "4":self._UIenterDepthValue,
+                                "5":self._UIenterDepthValue,
+                                "6":self._UIenterDepthValue,
+                                "7":self._UIenterDepthValue,
+                                "8":self._UIenterDepthValue,
+                                "9":self._UIenterDepthValue,
+                                chr(13):self._UIenterDepthValue, # enter key
+                                "c":self._clearSetPoints}
 
         self.intPolygons = 1
         print "intPolygons initialised to: " + str(self.intPolygons)       
 
-    def _UImouseClickPoint(self, x, y):
-        print "_UImouseClickPoint:",x,y
+    def _clearSetPoints(self, key=None):
+        """
+        Clears point set, creates initial 4 corner points
+        """
+        self._points = []
+        self._points.append((0,0,))
+        self._points.append((self._imageObj.getWidth()-1,0,))
+        self._points.append((0,self._imageObj.getHeight()-1,))
+        self._points.append((self._imageObj.getWidth()-1,
+                             self._imageObj.getHeight()-1,))
+        self._redrawView()
 
-    def _UIdeleteLastPoint(self):
-        print "_UIdeleteLastPoint"
+    def _UImouseClickPoint(self, x, y):
+        """
+        Adds point to points list if point does not exist
+        already, otherwise do selection of point
+        """
+        x, y = self._imageObj.convertToImageSpace(x, y)
+        selected = self._hasPoint(x, y)
+        if selected:
+            if selected != self._selectedPoint:
+                self._depthStr = ""
+            self._selectedPoint = selected
+            print "=" * 80
+            print "Selected point: ", self._selectedPoint
+            print "Current point depth: ", self._imageObj.getCoordsFor(*self._selectedPoint)[-1]
+            print "Enter selected point depth: ", self._depthStr
+            print "=" * 80
+        else:
+            self._selectedPoint = None
+            self._addPoint(x, y)
+        self._redrawView()
+    
+    def _UIdeleteLastPoint(self, key):
+        if len(self._points) > 4:
+            if self._selectedPoint == self._points.pop():
+                self._selectedPoint = None
+            self._redrawView()
+
+    def _UIenterDepthValue(self, key):
+        if self._selectedPoint:
+            if key.isdigit():
+                self._depthStr = self._depthStr + key
+                print "=" * 80
+                print "Current point depth: ", self._imageObj.getCoordsFor(*self._selectedPoint)[-1]
+                print "Enter selected point depth: ", self._depthStr
+            elif key == chr(13):
+                print "Point {0} set to depth: {1}".format(self._selectedPoint,
+                                                           self._depthStr)
+                print "=" * 80
+                self._imageObj.setZFor(int(self._depthStr), *self._selectedPoint)
+                self._depthStr = ""
+                self._selectedPoint = None
+                self._redrawView()
+
+    def _hasPoint(self, x, y):
+        radius = int(10 * (1.0/self._imageObj.getViewScale()))
+        for px, py in self._points:
+            if (x >= px-radius and x <= px+radius and
+                y >= py-radius and y <= py+radius):
+                return px, py
+        return None
+
+    def _addPoint(self, x, y):
+        self._points.append((x, y,))
+        self._redrawView()
+
+    def _redrawView(self):
+        self._view = self._imageObj.getView()
+        for point in self._points:
+            cpoint = self._imageObj.convertToViewSpace(*point)
+            if point == self._selectedPoint:
+                cv2.circle(self._view, cpoint, 5, (0,0,255,), 8)
+                cv2.circle(self._view, cpoint, 5, (0,255,0,), 2)
+            else:
+                cv2.circle(self._view, cpoint, 5, (0,0,255,), 2)
+        self._window.display(self._view)
 
     def cleanup(self):
         """

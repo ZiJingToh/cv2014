@@ -3,8 +3,9 @@ from .inputmodehandler import InputModeHandler
 
 
 class Movie(InputModeHandler):
-    def __init__(self, imageObj):
+    def __init__(self, window, imageObj):
         super(Movie, self).__init__()
+        self._window = window
         self._imageObj = imageObj
 
         self._modeName = "Movie"
@@ -17,7 +18,7 @@ class Movie(InputModeHandler):
         # { keychar:callback(key) }
         self._keyboardEvents = {"k":self._UIkeyframe}
 
-    def _UIkeyframe(self):
+    def _UIkeyframe(self, key):
         print "_UIkeyframe"
 
     def cleanup(self):
