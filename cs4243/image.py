@@ -63,8 +63,10 @@ class Image:
         self._view_scale = 0.65
 
         # stores x,y,z world coords for each point
-        self._image_points = self._image.astype(np.int)
-        self._image_points *= 0
+        self._image_points = np.zeros_like(self._image, np.int)
+        t_row, t_col = np.ogrid[0:self._image.shape[0], 0:self._image.shape[1]]
+        self._image_points[t_row, t_col, 0] = t_col
+        self._image_points[t_row, t_col, 1] = t_row
 
         self.intAttribute = 1
 
