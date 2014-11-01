@@ -15,6 +15,7 @@ Version      Date      Modified By                    Details
                                     incorporating the Methods: __init__,
                                     persproj, plotproj.
 """
+import platform
 import numpy as np
 import cv2
 
@@ -54,7 +55,10 @@ class Image:
         #===================
         #Constructor Method.
         #===================
-        self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)
+        if platform.system() == "Darwin":
+            self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)[::-1,::-1]
+        else:
+            self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)
         self._view = self._image[:]
         self._view_scale = 0.65
 
@@ -63,7 +67,6 @@ class Image:
         self._image_points *= 0
 
         self.intAttribute = 1
-        print "intAttribute initialised to: " + str(self.intAttribute)
 
     def getView(self):
         """

@@ -179,6 +179,9 @@ class Polygon(InputModeHandler):
         return None
 
     def _addPoint(self, x, y):
+        print "=" * 80
+        print "Adding point: ", (x, y, )
+        print "=" * 80
         self._points.append((x, y,))
         self._redrawView()
 
