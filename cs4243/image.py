@@ -16,6 +16,7 @@ Version      Date      Modified By                    Details
                                     persproj, plotproj.
 """
 import platform
+from matplotlib.mlab import griddata
 import numpy as np
 import cv2
 
@@ -59,16 +60,30 @@ class Image:
             self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)[::-1,::-1]
         else:
             self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)
+
         self._view = self._image[:]
         self._view_scale = 0.65
 
         # stores x,y,z world coords for each point
         self._image_points = np.zeros_like(self._image, np.int)
+        self.resetImagePoints()
+        print self._image_points.shape
+        self.intAttribute = 1
+
+    def resetImagePoints(self):
+        # stores x,y,z world coords for each point
         t_row, t_col = np.ogrid[0:self._image.shape[0], 0:self._image.shape[1]]
         self._image_points[t_row, t_col, 0] = t_col
         self._image_points[t_row, t_col, 1] = t_row
+        self._image_points[t_row, t_col, 2] = 0
 
-        self.intAttribute = 1
+    def interpolateImagePoints(self, points):
+        t_row, t_col = np.ogrid[0:self._image.shape[0], 0:self._image.shape[1]]
+        values = [self.getZAt(*p) for p in points]
+        interpZ = griddata([x[0] for x in points], [x[1] for x in points], values,
+                           t_col.tolist()[0], t_row.transpose().tolist()[0],
+                           "linear")
+        self._image_points[t_row, t_col, 2] = interpZ
 
     def getView(self):
         """
@@ -89,6 +104,9 @@ class Image:
 
     def getCoordsFor(self, x, y):
         return self._image_points[y][x]
+
+    def getZAt(self, x, y):
+        return self._image_points[y][x][-1]
 
     def setZFor(self, zValue, x, y ):
         self._image_points[y][x][-1] = zValue

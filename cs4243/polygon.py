@@ -125,6 +125,7 @@ class Polygon(InputModeHandler):
         self._points.append((0,self._imageObj.getHeight()-1,))
         self._points.append((self._imageObj.getWidth()-1,
                              self._imageObj.getHeight()-1,))
+        self._imageObj.resetImagePoints()
         self._redrawView()
 
     def _UImouseClickPoint(self, x, y):
@@ -147,10 +148,11 @@ class Polygon(InputModeHandler):
             self._selectedPoint = None
             self._addPoint(x, y)
         self._redrawView()
-    
+
     def _UIdeleteLastPoint(self, key):
         if len(self._points) > 4:
             if self._selectedPoint == self._points.pop():
+                self._imageObj.setZFor(0, *self._selectedPoint)
                 self._selectedPoint = None
             self._redrawView()
 
@@ -168,6 +170,7 @@ class Polygon(InputModeHandler):
                 self._imageObj.setZFor(int(self._depthStr), *self._selectedPoint)
                 self._depthStr = ""
                 self._selectedPoint = None
+                self._imageObj.interpolateImagePoints(self._points)
                 self._redrawView()
 
     def _hasPoint(self, x, y):
@@ -183,6 +186,7 @@ class Polygon(InputModeHandler):
         print "Adding point: ", (x, y, )
         print "=" * 80
         self._points.append((x, y,))
+        self._imageObj.interpolateImagePoints(self._points)
         self._redrawView()
 
     def _redrawView(self):
