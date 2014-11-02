@@ -63,7 +63,7 @@ class ProjectWindow(object):
 
     def run(self, imagePath):
         # main view
-        cv2.namedWindow(self._viewport, cv2.WINDOW_NORMAL)
+        cv2.namedWindow(self._viewport, cv2.WINDOW_AUTOSIZE)
 
         # Initialise image object
         self._imageObj = Image(self, imagePath)

@@ -18,7 +18,9 @@ Version      Date      Modified By                    Details
                                     rotbyrotmat.
 """
 from .inputmodehandler import InputModeHandler
+
 import cv2
+import os
 
 
 class Polygon(InputModeHandler):
@@ -98,7 +100,7 @@ class Polygon(InputModeHandler):
 
         # keyboard event callback of the form
         # { keychar:callback(key) }
-        self._keyboardEvents = {chr(127):self._UIdeleteLastPoint, # delete key
+        self._keyboardEvents = {chr(127):self._UIdeletePoint, # delete key
                                 "0":self._UIenterDepthValue,
                                 "1":self._UIenterDepthValue,
                                 "2":self._UIenterDepthValue,
@@ -110,7 +112,11 @@ class Polygon(InputModeHandler):
                                 "8":self._UIenterDepthValue,
                                 "9":self._UIenterDepthValue,
                                 chr(13):self._UIenterDepthValue, # enter key
-                                "c":self._clearSetPoints}
+                                "c":self._clearSetPoints,
+                                ",":self._selectPrevPoint,
+                                ".":self._selectNextPoint,
+                                "s":self._savePoints,
+                                "l":self._loadPoints}
 
         self.intPolygons = 1
         print "intPolygons initialised to: " + str(self.intPolygons)       
@@ -149,9 +155,10 @@ class Polygon(InputModeHandler):
             self._addPoint(x, y)
         self._redrawView()
 
-    def _UIdeleteLastPoint(self, key):
-        if len(self._points) > 4:
-            if self._selectedPoint == self._points.pop():
+    def _UIdeletePoint(self, key):
+        if (len(self._points) > 4 and self._selectedPoint and
+            not self._selectedPoint in self._points[:4]):
+            if self._points.remove(self._selectedPoint):
                 self._imageObj.setZFor(0, *self._selectedPoint)
                 self._selectedPoint = None
             self._redrawView()
@@ -174,7 +181,11 @@ class Polygon(InputModeHandler):
                 self._redrawView()
 
     def _hasPoint(self, x, y):
-        radius = int(10 * (1.0/self._imageObj.getViewScale()))
+        radius = int(15 * (1.0/self._imageObj.getViewScale()))
+
+        if (x, y,) in self._points:
+            return x, y
+
         for px, py in self._points:
             if (x >= px-radius and x <= px+radius and
                 y >= py-radius and y <= py+radius):
@@ -189,6 +200,22 @@ class Polygon(InputModeHandler):
         self._imageObj.interpolateImagePoints(self._points)
         self._redrawView()
 
+    def _selectPrevPoint(self, key):
+        if self._selectedPoint:
+            index = self._points.index(self._selectedPoint)
+            index -= 1
+            index %= len(self._points)
+            self._UImouseClickPoint(*self._imageObj.convertToViewSpace(
+                *self._points[index]))
+
+    def _selectNextPoint(self, key):
+        if self._selectedPoint:
+            index = self._points.index(self._selectedPoint)
+            index += 1
+            index %= len(self._points)
+            self._UImouseClickPoint(*self._imageObj.convertToViewSpace(
+                *self._points[index]))
+        
     def _redrawView(self):
         self._view = self._imageObj.getView()
         for point in self._points:
@@ -199,6 +226,12 @@ class Polygon(InputModeHandler):
             else:
                 cv2.circle(self._view, cpoint, 5, (0,0,255,), 2)
         self._window.display(self._view)
+
+    def _savePoints(self, key):
+        pass
+
+    def _loadPoints(self, key):
+        pass
 
     def cleanup(self):
         """
