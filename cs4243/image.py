@@ -215,6 +215,22 @@ class Image:
         #======================================================
         plt.show()
 
+    def show_image(self, image, image_title):
+        cv2.namedWindow(image_title)
+        cv2.imshow(image_title, image)
     
+    def update_image(self, cur_image, new_image, image_title):
+        newx,newy = new_image.shape[1]/2, new_image.shape[0]/2 #new size (w,h)
+        cur_image = cv2.resize(cur_image,(newx,newy))
+        cv2.destroyAllWindows()    
+        cv2.imshow(image_title, new_image)
+        
+    def delete_image(self):
+        ''' might need to add in delete image file '''
+        cv2.destroyAllWindows()
+     
+    def save_image(self, image_filename, image):
+        cv2.imwrite(image_filename,image)
+
 
     
