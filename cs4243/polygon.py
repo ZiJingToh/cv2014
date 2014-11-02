@@ -23,6 +23,10 @@ import cv2
 import os
 
 
+# For saving/loading points.
+SAVE_FILE = os.path.join(os.path.dirname(__file__), "polygon_points_save.txt")
+
+
 class Polygon(InputModeHandler):
     """
     **************
@@ -125,6 +129,7 @@ class Polygon(InputModeHandler):
         """
         Clears point set, creates initial 4 corner points
         """
+        self._selectedPoint = None
         self._points = []
         self._points.append((0,0,))
         self._points.append((self._imageObj.getWidth()-1,0,))
@@ -159,7 +164,7 @@ class Polygon(InputModeHandler):
         if (len(self._points) > 4 and self._selectedPoint and
             not self._selectedPoint in self._points[:4]):
             if self._points.remove(self._selectedPoint):
-                self._imageObj.setZFor(0, *self._selectedPoint)
+                self._imageObj.setZAt(0, *self._selectedPoint)
                 self._selectedPoint = None
             self._redrawView()
 
@@ -174,9 +179,8 @@ class Polygon(InputModeHandler):
                 print "Point {0} set to depth: {1}".format(self._selectedPoint,
                                                            self._depthStr)
                 print "=" * 80
-                self._imageObj.setZFor(int(self._depthStr), *self._selectedPoint)
+                self._imageObj.setZAt(int(self._depthStr), *self._selectedPoint)
                 self._depthStr = ""
-                self._selectedPoint = None
                 self._imageObj.interpolateImagePoints(self._points)
                 self._redrawView()
 
@@ -197,7 +201,6 @@ class Polygon(InputModeHandler):
         print "Adding point: ", (x, y, )
         print "=" * 80
         self._points.append((x, y,))
-        self._imageObj.interpolateImagePoints(self._points)
         self._redrawView()
 
     def _selectPrevPoint(self, key):
@@ -207,6 +210,8 @@ class Polygon(InputModeHandler):
             index %= len(self._points)
             self._UImouseClickPoint(*self._imageObj.convertToViewSpace(
                 *self._points[index]))
+        else:
+            self._UImouseClickPoint(0, 0)
 
     def _selectNextPoint(self, key):
         if self._selectedPoint:
@@ -215,6 +220,8 @@ class Polygon(InputModeHandler):
             index %= len(self._points)
             self._UImouseClickPoint(*self._imageObj.convertToViewSpace(
                 *self._points[index]))
+        else:
+            self._UImouseClickPoint(0, 0)
         
     def _redrawView(self):
         self._view = self._imageObj.getView()
@@ -228,10 +235,31 @@ class Polygon(InputModeHandler):
         self._window.display(self._view)
 
     def _savePoints(self, key):
-        pass
+        pointsStr = str(self._points)
+        zStr = str([self._imageObj.getZAt(*p) for p in self._points])
+
+        fd = open(SAVE_FILE, "w+")
+        fd.writelines([pointsStr, "\n",
+                       zStr, "\n"])
+        fd.close()
 
     def _loadPoints(self, key):
-        pass
+        if not os.path.exists:
+            return
+
+        self._clearSetPoints()
+
+        fd = open(SAVE_FILE, "r")
+        lines = fd.readlines()
+        fd.close()
+
+        self._points = eval(lines[0])
+        zValues = eval(lines[1])
+
+        for index, point in enumerate(self._points):
+            self._imageObj.setZAt(zValues[index], *point)
+
+        self._redrawView()
 
     def cleanup(self):
         """

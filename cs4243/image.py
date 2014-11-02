@@ -108,9 +108,9 @@ class Image:
     def getZAt(self, x, y):
         return self._image_points[y][x][-1]
 
-    def setZFor(self, zValue, x, y ):
+    def setZAt(self, zValue, x, y ):
         self._image_points[y][x][-1] = zValue
-
+        
     def convertToImageSpace(self, x, y):
         x *= 1.0/self._view_scale
         y *= 1.0/self._view_scale
