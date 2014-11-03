@@ -540,3 +540,12 @@ class Polygon(InputModeHandler):
         intNewRows = int(intElements / 3)
         matRotatedPoints = np.reshape(matRotatedPoints, (intNewRows, 3))
         return(matRotatedPoints)
+
+
+if __name__=="__main__":
+    import image, projectwindow
+    window = projectwindow.ProjectWindow()
+    img = image.Image(window, "../project.jpeg")
+    p = Polygon(window, img)
+    #window.display()
+    cv2.waitKey(0)
