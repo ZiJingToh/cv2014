@@ -1,14 +1,48 @@
 """
-Base class for state classes to have custom mouse/keyboard callbacks for the
-main loop to access as a standard interface.
-
-Classes inheriting must implement their own 
-`handleKeyboardEvents` / `handleMouseEvents` OR use the included helper
-dictionaries _mouseEvents` / `_keyboardEvents` to specify events and callbacks.
+=======================================================
+Course: CS4243.
+Course Title: Computer Vision & Pattern Recognition.
+Project: CS4243 Project on 3D Walk-through of 2D Image.
+Group Members: Dave Tan Woo Hong (A0106505R)
+               Desmond Lim Hock Yeam (A0106477B)
+               Toh Zijing (A0123506R)
+               Darren Boo Kuok Liang (A0087547N)
+=======================================================
+=======   ==========   ===========  ============================================
+Version      Date      Modified By                    Details
+=======   ==========   ===========  ============================================
+1.0.0     01/11/2014   Toh Zijing   Added new Class InputModeHandler.
 """
 
+
+#===============
+#Initialisation.
+#===============
+
+    
 class InputModeHandler(object):
+    """
+    ***********************
+    Class InputModeHandler.
+    ***********************
+    =========
+    Sypnosis.
+    =========
+    Base class for state classes to have custom mouse/keyboard callbacks for the
+    main loop to access as a standard interface.
+
+    Classes inheriting must implement their own
+    `handleKeyboardEvents` / `handleMouseEvents` OR use the included helper
+    dictionaries _mouseEvents` / `_keyboardEvents` to specify events and
+    callbacks.
+    """
+    #========
+    #Methods.
+    #========
     def __init__(self):
+        #===================
+        #Constructor Method.
+        #===================
         self._modeName = None
 
         # mouse event callback of the form

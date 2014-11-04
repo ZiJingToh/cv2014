@@ -14,7 +14,16 @@ Version      Date      Modified By                    Details
 1.0.0     26/10/2014   Dave Tan     Initial Version of Image Class
                                     incorporating the Methods: __init__,
                                     persproj, plotproj.
+2.0.0     01/11/2014   ???          Added the following Methods:
+                                    resetImagePoints, interpolateImagePoints,
+                                    getView, getWidth, getHeight, getViewScale,
+                                    getCoordsFor, getZAt, setZAt,
+                                    convertToImageSpace, convertToViewSpace,
+                                    show_image, update_image, delete_image,
+                                    save_image.
 """
+
+
 import platform
 from matplotlib.mlab import griddata
 import numpy as np
@@ -36,19 +45,13 @@ class Image:
     ========
     __init__: This is the Constructor Method for Class Image.
     
-    persproj: This Method performs the Perspective Projection and returns the 2D
+    persProj: This Method performs the Perspective Projection and returns the 2D
     Array containing the Projected Points.
 
-    plotproj: This Method names the Plot of the 2 x 2 SubPlots according to the
+    plotProj: This Method names the Plot of the 2 x 2 SubPlots according to the
     Title provided. This Function is used to plot the Perspective Projection of
     4 Frames.
     """
-
-    #======================
-    #Properties/Attributes.
-    #======================
-    intAttribute = None
-
     #========
     #Methods.
     #========
@@ -64,11 +67,15 @@ class Image:
         self._view = self._image[:]
         self._view_scale = 0.65
 
+        self._flat_3dpoints = []
+        self._image_new = None
+
         # stores x,y,z world coords for each point
         self._image_points = np.zeros_like(self._image, np.int)
         self.resetImagePoints()
+        print "The Dimensions of the Image are:\n"
         print self._image_points.shape
-        self.intAttribute = 1
+        print "\n"
 
     def resetImagePoints(self):
         # stores x,y,z world coords for each point
@@ -85,6 +92,44 @@ class Image:
                            "linear")
         self._image_points[t_row, t_col, 2] = interpZ
 
+    def getFlat3DPoints(self):
+        #===============
+        #Initialisation.
+        #===============
+        print "Getting Flat3DPoints...\n"
+
+        #If anyone can help to vectorise the Double for Loop, the performance
+        #would increase by leaps and bounds.
+
+        """
+        for intRowIndex in range(0, self.getHeight(), 1):
+            for intColumnIndex in range(0, self.getWidth(), 1):
+                if((intRowIndex == 0) and (intColumnIndex == 0)):
+                    #===============
+                    #First 3D Point.
+                    #===============
+                    self._flat_3dpoints = \
+                    self._image_points[intRowIndex][intColumnIndex]
+                else:
+                    #====================
+                    #Subsequent 3D Point.
+                    #====================
+                    self._flat_3dpoints = \
+                    np.append([self._flat_3dpoints],
+                              self._image_points[intRowIndex][intColumnIndex])
+        """
+
+        #=========================================
+        #Compose the 3D Scene Point List Property.
+        #=========================================
+        #Using the Double for Loop above takes too long, will look into
+        #vectorisation of this portion after work today. So temporarily using
+        #a Mock-Up 8 by 3 List to test the Rotation via Polygon Class Method
+        #rotByImage. Hence the above codes are commented out for the time-being.
+        self._flat_3dpoints = np.matrix([[0, 0, 0], [0, 0, 1], [0, 1, 0],
+                                      [0, 1, 1], [1, 0, 0], [1, 0, 1],
+                                      [1, 1, 0], [1, 1, 1]])
+        
     def getView(self):
         """
         Returns a copy of current view
@@ -121,7 +166,7 @@ class Image:
         y *= self._view_scale
         return (int(x), int(y))
 
-    def persproj(self, array3DScPts, arrayCamTrans, matCamOrient, int_f = 1,
+    def persProj(self, array3DScPts, arrayCamTrans, matCamOrient, int_f = 1,
                  int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0, int_bv = 1,
                  int_kv = 1):
         #===============
@@ -182,7 +227,7 @@ class Image:
         matProjPts = np.reshape(matProjPts, (intNewRows, 2))
         return(matProjPts)
 
-    def plotproj(self, strPlotTitle, arrayFr1PersProj, arrayFr2PersProj,
+    def plotProj(self, strPlotTitle, arrayFr1PersProj, arrayFr2PersProj,
                  arrayFr3PersProj, arrayFr4PersProj):
         #===============
         #Initialisation.
@@ -218,19 +263,16 @@ class Image:
     def show_image(self, image, image_title):
         cv2.namedWindow(image_title)
         cv2.imshow(image_title, image)
-    
+
     def update_image(self, cur_image, new_image, image_title):
         newx,newy = new_image.shape[1]/2, new_image.shape[0]/2 #new size (w,h)
         cur_image = cv2.resize(cur_image,(newx,newy))
         cv2.destroyAllWindows()    
         cv2.imshow(image_title, new_image)
-        
+
     def delete_image(self):
         ''' might need to add in delete image file '''
         cv2.destroyAllWindows()
-     
+
     def save_image(self, image_filename, image):
         cv2.imwrite(image_filename,image)
-
-
-    

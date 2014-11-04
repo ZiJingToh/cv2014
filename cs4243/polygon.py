@@ -16,9 +16,25 @@ Version      Date      Modified By                    Details
                                     normalise, quatconj, point2quat, rot2quat,
                                     quatmult, quat2rot, rotbyquatmult,
                                     rotbyrotmat.
+2.0.0     01/11/2014   Toh Zijing   Updated "__init__" Constructor Method and
+                                    added new Methods: _clearSetPoints,
+                                    _UImouseClickPoint, _UIdeleteLastPoint,
+                                    _UIenterDepthValue, _hasPoint, _addPoint,
+                                    _redrawView, cleanup.
+          02/11/2014   Dave Tan     Renamed the Methods introduced in v1.0.0 to
+                                    prepend "_" before the Method as well as
+                                    changing to Camel Case. Updated all affected
+                                    Methods to use the updated Method Names.
+                                    Added the following new Method:
+                                    _rotByImage.                                                                     
 """
-from .inputmodehandler import InputModeHandler
 
+#===============
+#Initialisation.
+#===============
+
+
+from inputmodehandler import InputModeHandler
 import cv2
 import os
 
@@ -43,41 +59,35 @@ class Polygon(InputModeHandler):
     ========
     __init__: This is the Constructor Method for Class Polygon.
     
-    normalise: #This Method normalises a Vector by its Magnitude.
+    _normalise: #This Method normalises a Vector by its Magnitude.
     
-    quatconj: This Method returns the Conjugate of the given Quaternion.
+    _quatConj: This Method returns the Conjugate of the given Quaternion.
     
-    point2quat: This Method converts an Input Vector to its Quaternion
+    _point2Quat: This Method converts an Input Vector to its Quaternion
     Representation.
 
-    rot2quat: This Method calculates the Quaternion for the Rotation Angle
+    _rot2Quat: This Method calculates the Quaternion for the Rotation Angle
     Theta given the Rotation Axis specified by wx, wy and wz.
 
-    quatmult: This Method performs the Quaternion Multiplications given 2 Input
+    _quatMult: This Method performs the Quaternion Multiplications given 2 Input
     Quaternions which are essentially 2 4-Element Input Vectors.
 
-    quat2rot: This Method returns the 3 x 3 Rotation Matrix parameterized with
+    _quat2Rot: This Method returns the 3 x 3 Rotation Matrix parameterized with
     the Elements of a given Intput Quaternion.
 
-    rotbyquatmult: This Method performs the Rotation of a Point using Quaternion
+    _rotByQuatMult: This Method performs the Rotation of a Point using Quaternion
     Multiplications given the Coordinates of the Point, the Angle of Rotation
     and the Axis of Rotation through wx, wy and wz. For the specified number of
     iterations, it will perform the Rotation and return the results in n x 3
     Array where n is the total number of Rows affected by the number of
     iterations.
 
-    rotbyrotmat: This Method performs the Rotation of the Camera Orientation at
+    _rotByRotMat: This Method performs the Rotation of the Camera Orientation at
     a given Frame provided in the form of a 3 x 3 Matrix. The Rotation Matrix of
     the Rotation Quarternion is used. For the specified number of iterations, it
     will perform the Rotation and return the results in n x 3 Array where n is
     the total number of Rows affected by the number of iterations.
     """
-    
-    #======================
-    #Properties/Attributes.
-    #======================
-    intPolygons = None
-
     #========
     #Methods.
     #========
@@ -121,9 +131,6 @@ class Polygon(InputModeHandler):
                                 ".":self._selectNextPoint,
                                 "s":self._savePoints,
                                 "l":self._loadPoints}
-
-        self.intPolygons = 1
-        print "intPolygons initialised to: " + str(self.intPolygons)       
 
     def _clearSetPoints(self, key=None):
         """
@@ -267,7 +274,7 @@ class Polygon(InputModeHandler):
         """
         print "Cleaning up after Polygon..."
 
-    def normalise(self, listInput):
+    def _normalise(self, listInput):
         #===============
         #Initialisation.
         #===============
@@ -291,7 +298,7 @@ class Polygon(InputModeHandler):
         #=============================
         return(listInput_normalised)
 
-    def quatconj(self, q):
+    def _quatConj(self, q):
         #===============
         #Initialisation.
         #===============
@@ -316,7 +323,7 @@ class Polygon(InputModeHandler):
         #=======================================
         return(q_conj)
 
-    def point2quat(self, arrPointVector):
+    def _point2Quat(self, arrPointVector):
         #===============
         #Initialisation.
         #===============
@@ -335,13 +342,13 @@ class Polygon(InputModeHandler):
         #===================
         return(sq, vq, q)
 
-    def rot2quat(self, fltTheta, wx, wy, wz):
+    def _rot2Quat(self, fltTheta, wx, wy, wz):
         #===============
         #Initialisation.
         #===============
         import numpy as np
         import math as ma
-        wx, wy, wz = self.normalise([wx, wy, wz])
+        wx, wy, wz = self._normalise([wx, wy, wz])
         vq = np.zeros([1, 3])
         fltTheta_radians = ma.radians(fltTheta)
 
@@ -367,7 +374,7 @@ class Polygon(InputModeHandler):
         #===============================================================
         return(sq, vq, q)
 
-    def quatmult(self, q1, q2):
+    def _quatMult(self, q1, q2):
         #===============
         #Initialisation.
         #===============
@@ -394,13 +401,13 @@ class Polygon(InputModeHandler):
         #==================
         return out
 
-    def quat2rot(self, q):
+    def _quat2Rot(self, q):
         #===============
         #Initialisation.
         #===============
         import numpy as np
         Rq = np.zeros([3, 3])
-        q = self.normalise(q)
+        q = self._normalise(q)
         q_0 = q[0]
         q_1 = q[1]
         q_2 = q[2]
@@ -424,7 +431,7 @@ class Polygon(InputModeHandler):
         #===========================
         return Rq
 
-    def rotbyquatmult(self, pt, fltTheta, wx, wy, wz, intIterations):
+    def _rotByQuatMult(self, pt, fltTheta, wx, wy, wz, intIterations):
         #===============
         #Initialisation.
         #===============
@@ -440,11 +447,11 @@ class Polygon(InputModeHandler):
             #======================================================
             #Perform the Rotation using Quaternion Multiplications.
             #======================================================
-            sp, vp, p = self.point2quat(pt2rot)
-            sq, vq, q = self.rot2quat(fltTheta, wx, wy, wz)
-            q_conj = self.quatconj(q)
-            qp = self.quatmult(q, p)
-            p_rot = self.quatmult(qp, q_conj)
+            sp, vp, p = self._point2Quat(pt2rot)
+            sq, vq, q = self._rot2Quat(fltTheta, wx, wy, wz)
+            q_conj = self._quatConj(q)
+            qp = self._quatMult(q, p)
+            p_rot = self._quatMult(qp, q_conj)
 
             #============================================================
             #Store the Rotated Point, discard the Scalar Portion of qpq*.
@@ -483,7 +490,7 @@ class Polygon(InputModeHandler):
         matRotatedPoints = np.reshape(matRotatedPoints, (intNewRows, 3))
         return(matRotatedPoints)
 
-    def rotbyrotmat(self, matCamFr, fltTheta, wx, wy, wz, intIterations):
+    def _rotByRotMat(self, matCamFr, fltTheta, wx, wy, wz, intIterations):
         #===============
         #Initialisation.
         #===============
@@ -494,8 +501,8 @@ class Polygon(InputModeHandler):
         #===============================
         #Obtain the Rotation Quaternion.
         #===============================
-        s_qrot, v_qrot, q_rot = self.rot2quat(fltTheta, wx, wy, wz)
-        matRot = np.matrix(self.quat2rot(q_rot))
+        s_qrot, v_qrot, q_rot = self._rot2Quat(fltTheta, wx, wy, wz)
+        matRot = np.matrix(self._quat2Rot(q_rot))
 
         #=======================================================================
         #Perform the Rotation using Matrix Multiplications and store the Rotated
@@ -541,11 +548,29 @@ class Polygon(InputModeHandler):
         matRotatedPoints = np.reshape(matRotatedPoints, (intNewRows, 3))
         return(matRotatedPoints)
 
+    def _rotByImage(self, objImage3D, fltTheta, wx, wy, wz, intIterations = 1):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        #intRows = objImage3D.getHeight()
+        #intColumns = objImage3D.getWidth()
+        #matCamFr = np.matrix(matCamFr)
+        #matCurrentCamFr = np.zeros([3, 3])
+        listRotated3DScene = objImage3D._flat_3dpoints
 
-if __name__=="__main__":
-    import image, projectwindow
-    window = projectwindow.ProjectWindow()
-    img = image.Image(window, "../project.jpeg")
-    p = Polygon(window, img)
-    #window.display()
-    cv2.waitKey(0)
+        #===============================
+        #Obtain the Rotation Quaternion.
+        #===============================
+        s_qrot, v_qrot, q_rot = self._rot2Quat(fltTheta, wx, wy, wz)
+        matRot = np.matrix(self._quat2Rot(q_rot))
+
+        #===========================================
+        #Perform the Rotation using Rotation Matrix.
+        #===========================================
+        listRotated3DScene = matRot * np.transpose(listRotated3DScene)
+
+        #==========================
+        #Return the Rotated Points.
+        #==========================
+        return(np.transpose(listRotated3DScene))
