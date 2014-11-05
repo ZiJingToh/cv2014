@@ -26,22 +26,26 @@ Version      Date      Modified By                    Details
                                     changing to Camel Case. Updated all affected
                                     Methods to use the updated Method Names.
                                     Added the following new Method:
-                                    _rotByImage.                                                                     
+                                    _rotByImage.
+2.0.1     04/11/2014   Dave Tan     Removed all Class Attributes and stick to
+                                    Instance Attributes.
+                                    Cleaned up Method _rotByImage.
 """
 
 #===============
 #Initialisation.
 #===============
-
+#if __name__ == '__main__' and __package__ is None:
+#    from os import sys, path
+#    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from inputmodehandler import InputModeHandler
+import numpy as np
 import cv2
 import os
 
-
 # For saving/loading points.
 SAVE_FILE = os.path.join(os.path.dirname(__file__), "polygon_points_save.txt")
-
 
 class Polygon(InputModeHandler):
     """
@@ -273,6 +277,19 @@ class Polygon(InputModeHandler):
         Cleanup after exiting state
         """
         print "Cleaning up after Polygon..."
+        points = np.array([(p[0],
+                            p[1],
+                            self._imageObj.getZAt(*p)) for p in self._points])
+        self._imageObj.triangulate(points)
+
+        #cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, -500]
+        cam = [0, -200, -200]
+        orient = np.eye(3)
+        for rot in xrange(0,40,10):
+            orient = self._rotByRotMat(np.eye(3), rot, 0, 1, 0, 1)
+            newImage = self._imageObj.getImageFromCam(cam, orient)
+            self._window.display(self._imageObj.getResizedImage(newImage))
+            cv2.waitKey(0)
 
     def _normalise(self, listInput):
         #===============
@@ -553,10 +570,6 @@ class Polygon(InputModeHandler):
         #Initialisation.
         #===============
         import numpy as np
-        #intRows = objImage3D.getHeight()
-        #intColumns = objImage3D.getWidth()
-        #matCamFr = np.matrix(matCamFr)
-        #matCurrentCamFr = np.zeros([3, 3])
         listRotated3DScene = objImage3D._flat_3dpoints
 
         #===============================
@@ -574,3 +587,10 @@ class Polygon(InputModeHandler):
         #Return the Rotated Points.
         #==========================
         return(np.transpose(listRotated3DScene))
+        
+
+
+        
+        
+        
+

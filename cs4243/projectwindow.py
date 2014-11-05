@@ -19,7 +19,9 @@ Version      Date      Modified By                    Details
 #===============
 #Initialisation.
 #===============
-
+#if __name__ == '__main__' and __package__ is None:
+#    from os import sys, path
+#    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 import cv2
 
@@ -28,7 +30,6 @@ from polygon import Polygon
 from movie import Movie
 
 STATES = [Polygon, Movie]
-
 
 class ProjectWindow(object):
     """

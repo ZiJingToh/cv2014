@@ -14,12 +14,13 @@ Version      Date      Modified By                    Details
 1.0.0     01/11/2014   Toh Zijing   Added new Class InputModeHandler.
 """
 
-
 #===============
 #Initialisation.
 #===============
+if __name__ == '__main__' and __package__ is None:
+    from os import sys, path
+    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-    
 class InputModeHandler(object):
     """
     ***********************
@@ -36,6 +37,8 @@ class InputModeHandler(object):
     dictionaries _mouseEvents` / `_keyboardEvents` to specify events and
     callbacks.
     """
+
+class InputModeHandler(object):
     #========
     #Methods.
     #========

@@ -17,6 +17,10 @@ Version      Date      Modified By                    Details
                                     Polygon Class. Include Method Invocation by
                                     using Polygon._rotByImage. Converted Screen
                                     Prints to Verbose Outputs.
+1.2.0     04/11/2014   Dave Tan     Introduced Options for displaying of Camera
+                                    Translations and Rotations.
+          05/11/2014   Dave Tan     Introduced codes to test Vectorised
+                                    Rotation.
 """
 
 def ptsTestSet1():
@@ -138,7 +142,7 @@ print("==================")
 print("a. Initialisation.")
 print("==================")
 
-strWorkingDirectory = "F:\Python\CS4243\Project\CS4243_v1.0.0_Dave"
+strWorkingDirectory = "F:\Python\CS4243\Project\CS4243_v2.0.1_Dave"
 import os
 from polygon import Polygon
 os.system('cls')
@@ -148,6 +152,8 @@ import numpy as np
 import cv2
 booVerbose = False
 booTestMode = True
+booDisplayCamTrans = False
+booDisplayCamOrient = False
 booPlotPersProj = False
 print("The current Working Directory is \"" + strRegisteredWorkingDirectory +
       "\".\n")
@@ -198,16 +204,45 @@ fltTheta = -30
 wx = 0
 wy = 1
 wz = 0
-img.getFlat3DPoints()
-print "Original 3D Scene Points:"
+#img.getFlat3DPoints()
+
+#Calculate Time Elapsed.
+import time
+intStart = time.time()
+
+print "Original 3D Scene Points:\n"
 print img._flat_3dpoints
 print "\n"
 img._flat_3dpoints_new = poly._rotByImage(img, fltTheta, wx, wy, wz)
-print "Rotated 3D Scene Points:"
+intEnd = time.time()
+print "Rotated 3D Scene Points:\n"
 print img._flat_3dpoints_new
 print "\n"
+print "Dimensions of the Array of Rotated Points is:\n"
+print img._flat_3dpoints_new.shape
+print "\n"
+print "Original 3D Scene Points Height (Rows) is: "
+print img.getHeight()
+print "\n"
+print "Original 3D Scene Points Width (Columns) is: "
+print img.getWidth()
+print "\n"
+print "The Product of Height and Width = # Pixels is:"
+print img.getHeight() * img.getWidth()
+print "\n"
+print "The Time Elapsed to perform the Rotation of " \
+      + str(img.getHeight() * img.getWidth()) + " Pixels is: " \
+      + str(intEnd - intStart) + " Seconds.\n"
+
 strFigureTitle = "Camera Translation"
-img.dispcamtrans(img._flat_3dpoints_new, strFigureTitle)
+
+#Test 3D Scene Flat Structure.
+test = np.zeros((2, 2, 3))
+test[0, 0] = [1, 1, 1]
+test[0, 1] = [2, 2, 2]
+test[1, 0] = [3, 3, 3]
+test[1, 1] = [4, 4, 4]
+test2 = test.ravel()
 
 if(booTestMode):
     #==========
@@ -256,6 +291,7 @@ arrayCamPos1 = arrayInitialPoint
 arrayCamPos2 = np.array(matRotatedPoints[0, :])[0].tolist()
 arrayCamPos3 = np.array(matRotatedPoints[1, :])[0].tolist()
 arrayCamPos4 = np.array(matRotatedPoints[2, :])[0].tolist()
+matRotatedPoints = np.append(arrayInitialPoint, matRotatedPoints)
 
 if(booVerbose):
     #=============
@@ -274,6 +310,15 @@ if(booVerbose):
     print(arrayCamPos4)
     print("\n")
 
+#Display Camera Translations.
+if(booDisplayCamTrans):
+    #============================
+    #Display Camera Translations.
+    #============================
+    img.dispCamTrans(matRotatedPoints, strFigureTitle)
+
+print("\n")
+
 #=======================
 #c. Camera Orientations.
 #=======================
@@ -288,29 +333,45 @@ wy = 1
 wz = 0
 
 #Compute Camera Orientations.
-quatmat_1 = np.array(np.eye(3))
-quatmat_2 = poly._rotByRotMat(quatmat_1, fltTheta, wx, wy, wz, 1)
-quatmat_3 = poly._rotByRotMat(quatmat_2, fltTheta, wx, wy, wz, 1)
-quatmat_4 = poly._rotByRotMat(quatmat_3, fltTheta, wx, wy, wz, 1)
+CamOrient1 = np.array(np.eye(3))
+CamOrient2 = poly._rotByRotMat(CamOrient1, fltTheta, wx, wy, wz, 1)
+CamOrient3 = poly._rotByRotMat(CamOrient2, fltTheta, wx, wy, wz, 1)
+CamOrient4 = poly._rotByRotMat(CamOrient3, fltTheta, wx, wy, wz, 1)
+
+#Display Camera Orientations.
+if(booDisplayCamOrient):
+    #============================
+    #Display Camera Orientations.
+    #============================
+    strFigureTitle1 = "Camera Orientation 1"
+    img.dispCamOrient(CamOrient1, strFigureTitle1)
+    strFigureTitle2 = "Camera Orientation 2"
+    img.dispCamOrient(CamOrient2, strFigureTitle2)
+    strFigureTitle3 = "Camera Orientation 3"
+    img.dispCamOrient(CamOrient3, strFigureTitle3)
+    strFigureTitle4 = "Camera Orientation 4"
+    img.dispCamOrient(CamOrient4, strFigureTitle4)
 
 if(booVerbose):
     #=============
     #Verbose Mode.
     #=============
     print("The Camera Orientation at Frame 1 (quatmat_1) is:\n")
-    print quatmat_1
+    print CamOrient1
     print("\n")
     print("The Camera Orientation at Frame 2 (quatmat_2) is:\n")
-    print(quatmat_2)
+    print(CamOrient2)
     print("\n")
     print("The Camera Orientation at Frame 3 (quatmat_3) is:\n")
-    print(quatmat_3)
+    print(CamOrient3)
     print("\n")
     print("The Camera Orientation at Frame 4 (quatmat_4) is:\n")
-    print(quatmat_4)
+    print(CamOrient4)
     print("\n")
     print("Each Row of the above Matrices represent the X-Axis, Y-Axis and Z-Axis ")
     print("Directions respectively.\n")
+
+print("\n")
 
 #===================================================================
 #d. Plot the Images for the Perspective Projection for the 4 Frames.
@@ -319,10 +380,10 @@ print("===================================================================")
 print("d. Plot the Images for the Perspective Projection for the 4 Frames.")
 print("===================================================================")
 
-arrayFr1PersProj = img.persProj(mat3DScene, arrayCamPos1, quatmat_1)
-arrayFr2PersProj = img.persProj(mat3DScene, arrayCamPos2, quatmat_2)
-arrayFr3PersProj = img.persProj(mat3DScene, arrayCamPos3, quatmat_3)
-arrayFr4PersProj = img.persProj(mat3DScene, arrayCamPos4, quatmat_4)
+arrayFr1PersProj = img.persProj(mat3DScene, arrayCamPos1, CamOrient1)
+arrayFr2PersProj = img.persProj(mat3DScene, arrayCamPos2, CamOrient2)
+arrayFr3PersProj = img.persProj(mat3DScene, arrayCamPos3, CamOrient3)
+arrayFr4PersProj = img.persProj(mat3DScene, arrayCamPos4, CamOrient4)
 strPlotTitle = "Perspective Projection"
 
 if(booPlotPersProj):
