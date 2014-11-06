@@ -29,10 +29,11 @@ Version      Date      Modified By                    Details
 """
 
 import platform
-from matplotlib.tri import Triangulation
+from matplotlib.tri import Triangulation, TriAnalyzer
 from matplotlib.mlab import griddata
 import numpy as np
 import cv2
+
 
 class Image:
     """
@@ -171,13 +172,22 @@ class Image:
         return (int(x), int(y))
 
     def triangulate(self, points):
+        x, y = np.meshgrid(range(15),range(11))
+        x = (self._image.shape[1]/14) * x.flatten()
+        y = (self._image.shape[0]/10) * y.flatten()
+
+        extendedPoints = np.array([(p[0],p[1],self.getZAt(*p)) for p in zip(x, y)]).astype(np.float32)
+
         self._selectedPoints = points.astype(np.float32)
+        self.selectedPoints = np.concatenate((self._selectedPoints, extendedPoints))
         self._newSelectedPoints = self._selectedPoints.copy()
-        self._tri = Triangulation(points[:,0], points[:,1])
+        self._tri = Triangulation(points[:,0],
+                                  points[:,1])
+        self._tri.set_mask(TriAnalyzer(self._tri).get_flat_tri_mask())
         self._triImages = []
 
         # cache image for each triangle
-        for triangle in self._tri.triangles:
+        for triangle in self._tri.get_masked_triangles():
             triPoints = np.array([self._selectedPoints[p][0:2] for p in triangle])
 
             # cut out triangle image - create mask
@@ -203,24 +213,21 @@ class Image:
         #    point[-1] = z
         #    self._newSelectedPoints[index] = point
 
-    def getImageFromCam(self, arrayCamTrans, matCamOrient):
-        uvPoints = self.persProj(self._newSelectedPoints,
+    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f):
+        """
+        Drawing using all points
+        """
+        uvPoints = self.persProj(self._selectedPoints,
                                  arrayCamTrans,
                                  matCamOrient,
-                                 int_f = 350).astype(np.float32)
+                                 int_f = int_f).astype(np.float32)
         uvPoints[:,0] += self.getWidth()/2
         uvPoints[:,1] += self.getHeight()/2
 
-        #newImage = np.zeros_like(self._image)
-
-        #for e1, e2 in self._tri.edges:
-        #    cv2.line(newImage, tuple(np.array(uvPoints[e1]).flatten()), tuple(np.array(uvPoints[e2]).flatten()), (0,255,0,), 3)
-
-        #return newImage
         rows, cols, ch = self._image.shape
 
         newImage = np.zeros_like(self._image)
-        for index, triangle in enumerate(self._tri.triangles):
+        for index, triangle in enumerate(self._tri.get_masked_triangles()):
             newTriPoints = np.array([uvPoints[p] for p in triangle])
             # skip if facing back
             if np.cross(newTriPoints[1]-newTriPoints[0], newTriPoints[2]-newTriPoints[1]) <= 0:
@@ -230,6 +237,30 @@ class Image:
             dst = cv2.warpAffine(self._triImages[index], M, (cols, rows))
             newImage = np.maximum(dst, newImage)
         return newImage
+
+    def getImageFromCam2(self, arrayCamTrans, matCamOrient):
+        """
+        Drawing using selected points + triangles
+        """
+        newImage = self._image.reshape((self.getHeight()*self.getWidth(), 3))
+        newImage = newImage[0:self.getHeight()*self.getWidth():75]
+        newImagePoints = self._image_points.reshape((self.getHeight()*self.getWidth(), 3))
+        newImagePoints = newImagePoints[0:self.getHeight()*self.getWidth():75]
+
+        uvPoints = self.persProj(newImagePoints,
+                                 arrayCamTrans,
+                                 matCamOrient,
+                                 int_f = 350).astype(np.float32)
+        uvPoints[:,0] += self.getWidth()/2
+        uvPoints[:,1] += self.getHeight()/2
+
+        retImage = np.zeros_like(self._image)
+        for index, point in enumerate(uvPoints):
+            point = tuple(np.array(point).flatten())
+            color = tuple(newImage[index])
+            cv2.circle(retImage, point, 2, [int(x) for x in color] )
+        
+        return retImage
 
     def persProj(self, array3DScPts, arrayCamTrans, matCamOrient, int_f = 1,
                  int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0, int_bv = 1,
@@ -258,14 +289,14 @@ class Image:
             #====
             fltNumerator = int_f * np.dot(np.transpose(sp_minus_tf), i_f)
             fltDenominator = np.dot(np.transpose(sp_minus_tf), k_f)
-            ufp = (fltNumerator / fltDenominator) * int_bu + int_u0
+            ufp = ((fltNumerator / fltDenominator) if fltDenominator > 0 else 0) * int_bu + int_u0
             
             #====
             #vfp.
             #====           
             fltNumerator = int_f * np.dot(np.transpose(sp_minus_tf), j_f)
             fltDenominator = np.dot(np.transpose(sp_minus_tf), k_f)
-            vfp = (fltNumerator / fltDenominator) * int_bv + int_v0
+            vfp = ((fltNumerator / fltDenominator) if fltDenominator > 0 else 0) * int_bv + int_v0
 
             #=============================
             #Store the Projected 2D Point.

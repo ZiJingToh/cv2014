@@ -47,6 +47,7 @@ import os
 # For saving/loading points.
 SAVE_FILE = os.path.join(os.path.dirname(__file__), "polygon_points_save.txt")
 
+
 class Polygon(InputModeHandler):
     """
     **************
@@ -270,6 +271,8 @@ class Polygon(InputModeHandler):
         for index, point in enumerate(self._points):
             self._imageObj.setZAt(zValues[index], *point)
 
+        self._imageObj.interpolateImagePoints(self._points)
+
         self._redrawView()
 
     def cleanup(self):
@@ -282,12 +285,12 @@ class Polygon(InputModeHandler):
                             self._imageObj.getZAt(*p)) for p in self._points])
         self._imageObj.triangulate(points)
 
-        cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, -100]
-        #cam = [0, -200, -200]
+        # TESTING CODE
+        cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, -350]
         orient = np.eye(3)
-        for rot in xrange(0,40,10):
+        for rot in xrange(0,61,20):
             orient = self._rotByRotMat(np.eye(3), rot, 0, 1, 0, 1)
-            newImage = self._imageObj.getImageFromCam(cam, orient)
+            newImage = self._imageObj.getImageFromCam(cam, orient, np.abs(cam[-1]))
             self._window.display(self._imageObj.getResizedImage(newImage))
             cv2.waitKey(0)
 
