@@ -282,8 +282,8 @@ class Polygon(InputModeHandler):
                             self._imageObj.getZAt(*p)) for p in self._points])
         self._imageObj.triangulate(points)
 
-        #cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, -500]
-        cam = [0, -200, -200]
+        cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, -100]
+        #cam = [0, -200, -200]
         orient = np.eye(3)
         for rot in xrange(0,40,10):
             orient = self._rotByRotMat(np.eye(3), rot, 0, 1, 0, 1)

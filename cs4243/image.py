@@ -194,14 +194,14 @@ class Image:
 
         #self._newSelectedPoints[:,0] = ((self._newSelectedPoints[:,0] - 770))
         #self._newSelectedPoints[:,1] = ((self._newSelectedPoints[:,1] - 740))
-        for index, point in enumerate(self._newSelectedPoints):
-            z = point[-1]
-            point[0] -= 770
-            point[1] -= 740
-            if z > 0:
-                point *= np.interp(z,[0,1000],[1,3])
-            point[-1] = z
-            self._newSelectedPoints[index] = point
+        #for index, point in enumerate(self._newSelectedPoints):
+        #    z = point[-1]
+        #    point[0] -= 770
+        #    point[1] -= 740
+        #    if z > 0:
+        #        point *= np.interp(z,[0,1000],[1,3])
+        #    point[-1] = z
+        #    self._newSelectedPoints[index] = point
 
     def getImageFromCam(self, arrayCamTrans, matCamOrient):
         uvPoints = self.persProj(self._newSelectedPoints,
