@@ -106,11 +106,12 @@ class Polygon(InputModeHandler):
         self._view = self._imageObj.getView()
 
         self._modeName = "Polygon"
+        self._coordMode = "Z" # X, Y or Z
 
         # set to store clicked points
         self._points = []
         self._selectedPoint = None
-        self._depthStr = ""
+        self._valueStr = ""
         self._clearSetPoints()
 
         # mouse event callback of the form
@@ -120,22 +121,34 @@ class Polygon(InputModeHandler):
         # keyboard event callback of the form
         # { keychar:callback(key) }
         self._keyboardEvents = {chr(127):self._UIdeletePoint, # delete key
-                                "0":self._UIenterDepthValue,
-                                "1":self._UIenterDepthValue,
-                                "2":self._UIenterDepthValue,
-                                "3":self._UIenterDepthValue,
-                                "4":self._UIenterDepthValue,
-                                "5":self._UIenterDepthValue,
-                                "6":self._UIenterDepthValue,
-                                "7":self._UIenterDepthValue,
-                                "8":self._UIenterDepthValue,
-                                "9":self._UIenterDepthValue,
-                                chr(13):self._UIenterDepthValue, # enter key
+                                "0":self._UIenterValue,
+                                "1":self._UIenterValue,
+                                "2":self._UIenterValue,
+                                "3":self._UIenterValue,
+                                "4":self._UIenterValue,
+                                "5":self._UIenterValue,
+                                "6":self._UIenterValue,
+                                "7":self._UIenterValue,
+                                "8":self._UIenterValue,
+                                "9":self._UIenterValue,
+                                "q":self._UIsetCoordMode,
+                                "w":self._UIsetCoordMode,
+                                "e":self._UIsetCoordMode,
+                                chr(13):self._UIenterValue, # enter key
                                 "c":self._clearSetPoints,
                                 ",":self._selectPrevPoint,
                                 ".":self._selectNextPoint,
                                 "s":self._savePoints,
                                 "l":self._loadPoints}
+
+    def _UIsetCoordMode(self, key):
+        if key == "q":
+            self._coordMode = "X"
+        elif key == "w":
+            self._coordMode = "Y"
+        elif key == "e":
+            self._coordMode = "Z"
+        print "Coord Mode: ", self._coordMode
 
     def _clearSetPoints(self, key=None):
         """
@@ -160,12 +173,12 @@ class Polygon(InputModeHandler):
         selected = self._hasPoint(x, y)
         if selected:
             if selected != self._selectedPoint:
-                self._depthStr = ""
+                self._valueStr = ""
             self._selectedPoint = selected
             print "=" * 80
             print "Selected point: ", self._selectedPoint
-            print "Current point depth: ", self._imageObj.getCoordsFor(*self._selectedPoint)[-1]
-            print "Enter selected point depth: ", self._depthStr
+            print "Current point ", self._coordMode, ": ", self._imageObj.getCoordsFor(*self._selectedPoint)
+            print "Enter selected point ", self._coordMode, ": ", self._valueStr
             print "=" * 80
         else:
             self._selectedPoint = None
@@ -180,19 +193,25 @@ class Polygon(InputModeHandler):
                 self._selectedPoint = None
             self._redrawView()
 
-    def _UIenterDepthValue(self, key):
+    def _UIenterValue(self, key):
         if self._selectedPoint:
             if key.isdigit():
-                self._depthStr = self._depthStr + key
+                self._valueStr = self._valueStr + key
                 print "=" * 80
-                print "Current point depth: ", self._imageObj.getCoordsFor(*self._selectedPoint)[-1]
-                print "Enter selected point depth: ", self._depthStr
+                print "Current point ", self._coordMode, ": ", self._imageObj.getCoordsFor(*self._selectedPoint)
+                print "Enter selected point depth: ", self._valueStr
             elif key == chr(13):
-                print "Point {0} set to depth: {1}".format(self._selectedPoint,
-                                                           self._depthStr)
+                print "Point {0} set to {1}: {2}".format(self._selectedPoint,
+                                                         self._coordMode,
+                                                         self._valueStr)
                 print "=" * 80
-                self._imageObj.setZAt(int(self._depthStr), *self._selectedPoint)
-                self._depthStr = ""
+                if self._coordMode == "X":
+                    self._imageObj.setXAt(int(self._valueStr), *self._selectedPoint)
+                elif self._coordMode == "Y":
+                    self._imageObj.setYAt(int(self._valueStr), *self._selectedPoint)
+                elif self._coordMode == "Z":
+                    self._imageObj.setZAt(int(self._valueStr), *self._selectedPoint)
+                self._valueStr = ""
                 self._imageObj.interpolateImagePoints(self._points)
                 self._redrawView()
 
@@ -248,10 +267,14 @@ class Polygon(InputModeHandler):
 
     def _savePoints(self, key):
         pointsStr = str(self._points)
+        xStr = str([self._imageObj.getXAt(*p) for p in self._points])
+        yStr = str([self._imageObj.getYAt(*p) for p in self._points])
         zStr = str([self._imageObj.getZAt(*p) for p in self._points])
 
         fd = open(SAVE_FILE, "w+")
         fd.writelines([pointsStr, "\n",
+                       xStr, "\n",
+                       yStr, "\n",
                        zStr, "\n"])
         fd.close()
 
@@ -266,9 +289,13 @@ class Polygon(InputModeHandler):
         fd.close()
 
         self._points = eval(lines[0])
-        zValues = eval(lines[1])
+        xValues = eval(lines[1])
+        yValues = eval(lines[2])
+        zValues = eval(lines[3])
 
         for index, point in enumerate(self._points):
+            self._imageObj.setXAt(xValues[index], *point)
+            self._imageObj.setYAt(yValues[index], *point)
             self._imageObj.setZAt(zValues[index], *point)
 
         self._imageObj.interpolateImagePoints(self._points)
@@ -280,18 +307,26 @@ class Polygon(InputModeHandler):
         Cleanup after exiting state
         """
         print "Cleaning up after Polygon..."
-        points = np.array([(p[0],
-                            p[1],
-                            self._imageObj.getZAt(*p)) for p in self._points])
-        self._imageObj.triangulate(points)
+        self._imageObj.triangulate(self._points)
 
-        # TESTING CODE
-        cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, -500]
+        # TESTING CODE - TO REMOVE!!
+        img = self._imageObj._image.copy()
+        for e in self._imageObj._tri.edges:
+            cv2.line(img,
+                     tuple(self._imageObj._selected2DPoints[e[0]][:2]),
+                     tuple(self._imageObj._selected2DPoints[e[1]][:2]), (0,255,0))
+        img = self._imageObj.getResizedImage(img)
+        self._window.display(img)
+        cv2.waitKey(0)
+
+        # TESTING CODE - TO REMOVE!!
+        cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, 300]
         orient = np.eye(3)
         for rot in xrange(0,61,20):
             orient = self._rotByRotMat(np.eye(3), rot, 0, 1, 0, 1)
-            newImage = self._imageObj.getImageFromCam(cam, orient, np.abs(cam[-1]))
+            newImage = self._imageObj.getImageFromCam(cam, orient, 500) # np.abs(cam[-1]))
             self._window.display(self._imageObj.getResizedImage(newImage))
+            #cv2.imwrite(str(rot)+".jpg", newImage)
             cv2.waitKey(0)
 
     def _normalise(self, listInput):

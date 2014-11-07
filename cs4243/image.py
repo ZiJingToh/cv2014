@@ -155,11 +155,23 @@ class Image:
     def getCoordsFor(self, x, y):
         return self._image_points[y][x]
 
+    def getXAt(self, x, y):
+        return self._image_points[y][x][0]
+
+    def getYAt(self, x, y):
+        return self._image_points[y][x][1]
+
     def getZAt(self, x, y):
-        return self._image_points[y][x][-1]
+        return self._image_points[y][x][2]
+
+    def setXAt(self, xValue, x, y ):
+        self._image_points[y][x][0] = xValue
+
+    def setYAt(self, yValue, x, y ):
+        self._image_points[y][x][1] = yValue
 
     def setZAt(self, zValue, x, y ):
-        self._image_points[y][x][-1] = zValue
+        self._image_points[y][x][2] = zValue
         
     def convertToImageSpace(self, x, y):
         x *= 1.0/self._view_scale
@@ -172,37 +184,39 @@ class Image:
         return (int(x), int(y))
 
     def triangulate(self, points):
-        xwidth = 11
+        xwidth = 21
         ywidth = int(xwidth*(float(self.getHeight())/self.getWidth()))
         x, y = np.meshgrid(range(xwidth),range(ywidth))
         x = ((self.getWidth()-1)/(xwidth-1)) * x.flatten()
         y = ((self.getHeight()-1)/(ywidth-1)) * y.flatten()
 
-        extendedPoints = np.array([(p[0],p[1],self.getZAt(*p)) for p in zip(x, y)]).astype(np.float32)
+        extendedPoints = np.array(zip(x, y)).astype(np.float32)
 
-        self._selectedPoints = points.astype(np.float32)
-        self._selectedPoints = np.concatenate((self._selectedPoints, extendedPoints))
-        self._newSelectedPoints = self._selectedPoints.copy()
-        self._tri = Triangulation(self._selectedPoints[:,0],
-                                  self._selectedPoints[:,1])
+        #self._selected2DPoints = np.array(points).astype(np.float32)
+        #self._selected2DPoints = np.concatenate((self._selected2DPoints,
+        #                                         extendedPoints))
+        self._selected2DPoints = extendedPoints
+        self._selectedPoints = [(self.getXAt(*p),
+                                 self.getYAt(*p),
+                                 self.getZAt(*p),) for p in self._selected2DPoints]
+        self._selectedPoints = np.array(self._selectedPoints).astype(np.float32)
+        self._tri = Triangulation(self._selected2DPoints[:,0],
+                                  self._selected2DPoints[:,1])
         self._tri.set_mask(TriAnalyzer(self._tri).get_flat_tri_mask())
         self._triImages = []
-        print len(self._tri.get_masked_triangles())
         # cache image for each triangle
         for triangle in self._tri.get_masked_triangles():
-            triPoints = np.array([self._selectedPoints[p][0:2] for p in triangle])
+            triPoints = np.array([self._selected2DPoints[p] for p in triangle])
 
             # cut out triangle image - create mask
             mask = np.zeros(self._image.shape, dtype=np.uint8)
             cv2.fillPoly(mask,
                          np.array([triPoints.astype(np.int)]),
                          (255, 255, 255))
-            #mask = cv2.erode(mask, (3, 3))
-
             # apply the mask
             maskedImage = cv2.bitwise_and(self._image, mask)            
             
-            self._triImages.append(maskedImage)
+            self._triImages.append(maskedImage)                
 
     def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f):
         """
@@ -221,11 +235,27 @@ class Image:
         for index, triangle in enumerate(self._tri.get_masked_triangles()):
             newTriPoints = np.array([uvPoints[p] for p in triangle])
             # skip if facing back
-            if np.cross(newTriPoints[1]-newTriPoints[0], newTriPoints[2]-newTriPoints[1]) <= 0:
+            if np.cross(newTriPoints[1]-newTriPoints[0],
+                        newTriPoints[2]-newTriPoints[1]) <= 0:
                 continue
-            originalTriPoints = np.array([self._selectedPoints[p][0:2] for p in triangle])
+            # skip if triangle out of display window
+            if not(True in (newTriPoints > 0) and
+                   True in (newTriPoints < self.getWidth())):
+                continue
+            originalTriPoints = np.array([self._selected2DPoints[p]
+                                          for p in triangle])
             M = cv2.getAffineTransform(originalTriPoints, newTriPoints)
             dst = cv2.warpAffine(self._triImages[index], M, (cols, rows))
+
+            """
+            mask = np.zeros(self._image.shape, dtype=np.uint8)
+            cv2.fillPoly(mask,
+                         np.array([newTriPoints.astype(np.int)]),
+                         (255, 255, 255))
+            # apply the mask
+            dst = cv2.bitwise_and(dst, mask)
+            """
+
             newImage = np.maximum(dst, newImage)
         return newImage
 
