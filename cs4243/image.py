@@ -172,20 +172,22 @@ class Image:
         return (int(x), int(y))
 
     def triangulate(self, points):
-        x, y = np.meshgrid(range(15),range(11))
-        x = (self._image.shape[1]/14) * x.flatten()
-        y = (self._image.shape[0]/10) * y.flatten()
+        xwidth = 11
+        ywidth = int(xwidth*(float(self.getHeight())/self.getWidth()))
+        x, y = np.meshgrid(range(xwidth),range(ywidth))
+        x = ((self.getWidth()-1)/(xwidth-1)) * x.flatten()
+        y = ((self.getHeight()-1)/(ywidth-1)) * y.flatten()
 
         extendedPoints = np.array([(p[0],p[1],self.getZAt(*p)) for p in zip(x, y)]).astype(np.float32)
 
         self._selectedPoints = points.astype(np.float32)
-        self.selectedPoints = np.concatenate((self._selectedPoints, extendedPoints))
+        self._selectedPoints = np.concatenate((self._selectedPoints, extendedPoints))
         self._newSelectedPoints = self._selectedPoints.copy()
-        self._tri = Triangulation(points[:,0],
-                                  points[:,1])
+        self._tri = Triangulation(self._selectedPoints[:,0],
+                                  self._selectedPoints[:,1])
         self._tri.set_mask(TriAnalyzer(self._tri).get_flat_tri_mask())
         self._triImages = []
-
+        print len(self._tri.get_masked_triangles())
         # cache image for each triangle
         for triangle in self._tri.get_masked_triangles():
             triPoints = np.array([self._selectedPoints[p][0:2] for p in triangle])
@@ -202,20 +204,9 @@ class Image:
             
             self._triImages.append(maskedImage)
 
-        #self._newSelectedPoints[:,0] = ((self._newSelectedPoints[:,0] - 770))
-        #self._newSelectedPoints[:,1] = ((self._newSelectedPoints[:,1] - 740))
-        #for index, point in enumerate(self._newSelectedPoints):
-        #    z = point[-1]
-        #    point[0] -= 770
-        #    point[1] -= 740
-        #    if z > 0:
-        #        point *= np.interp(z,[0,1000],[1,3])
-        #    point[-1] = z
-        #    self._newSelectedPoints[index] = point
-
     def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f):
         """
-        Drawing using all points
+        Drawing using selected points + triangles
         """
         uvPoints = self.persProj(self._selectedPoints,
                                  arrayCamTrans,
@@ -240,7 +231,7 @@ class Image:
 
     def getImageFromCam2(self, arrayCamTrans, matCamOrient):
         """
-        Drawing using selected points + triangles
+        Drawing using all points
         """
         newImage = self._image.reshape((self.getHeight()*self.getWidth(), 3))
         newImage = newImage[0:self.getHeight()*self.getWidth():75]

@@ -176,7 +176,7 @@ class Polygon(InputModeHandler):
         if (len(self._points) > 4 and self._selectedPoint and
             not self._selectedPoint in self._points[:4]):
             if self._points.remove(self._selectedPoint):
-                self._imageObj.setZAt(0, *self._selectedPoint)
+                self._imageObj.setZAt([0,0,0], *self._selectedPoint)
                 self._selectedPoint = None
             self._redrawView()
 
@@ -286,7 +286,7 @@ class Polygon(InputModeHandler):
         self._imageObj.triangulate(points)
 
         # TESTING CODE
-        cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, -350]
+        cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, -500]
         orient = np.eye(3)
         for rot in xrange(0,61,20):
             orient = self._rotByRotMat(np.eye(3), rot, 0, 1, 0, 1)
