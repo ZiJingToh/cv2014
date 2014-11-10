@@ -35,7 +35,7 @@ class ProjectWindow(object):
     """
     General Keys:
     Esc : Quit program
-    m : Move to next state/mode
+    F12 : Move to next state/mode
 
     States:
 
@@ -67,8 +67,8 @@ class ProjectWindow(object):
             # Esc - quit program
             if key == 27:
                 break
-            # F12 - next state/mode
-            if key == ord("m"):
+            # m - next state/mode
+            if key == 109:
                 # exit if no more states
                 self._nextState()
                 if not self._stateObj:

@@ -26,14 +26,29 @@ Version      Date      Modified By                    Details
 2.0.1     04/11/2014   Dave Tan     Removed all Class Attributes and stick to
                                     Instance Attributes.
           05/11/2014   Dave Tan     Vectorised Method getFlat3DPoints.
+2.1.0     dd/mm/yyyy   ???          Added the following new Methods:
+                                    getResizedImage, getXAt, getYAt, setXAt,
+                                    setYAt, triangulate, getImageFromCam,
+                                    getImageFromCam2
+2.2.0     07/11/2014   Dave Tan     Added new Method persProj2. Modified
+                                    __init__ Constructor Method to flip the
+                                    Image by 180 Degrees for non-Darwin
+                                    Platform.
+2.3.0     09/11/2014   Toh Zijing   Vectorised Method persProj2.
+                       Dave Tan
+2.4.0     09/11/2014   Dave Tan     Enhanced persProj2 to include Arguments for
+                                    plotting Current Frame Camera Translation
+                                    and Rotation. Updated Image Class Sypnosis.
+                                    Added new Method plotCamTransAndOrient.
 """
 
+#===============
+#Initialisation.
+#===============
 import platform
-from matplotlib.tri import Triangulation, TriAnalyzer
 from matplotlib.mlab import griddata
 import numpy as np
 import cv2
-
 
 class Image:
     """
@@ -53,6 +68,8 @@ class Image:
     persProj: This Method performs the Perspective Projection and returns the 2D
     Array containing the Projected Points.
 
+    persProj: This Method is a Vectorised Version of persProj.
+
     plotProj: This Method names the Plot of the 2 x 2 SubPlots according to the
     Title provided. This Function is used to plot the Perspective Projection of
     4 Frames.
@@ -70,7 +87,7 @@ class Image:
     dispCamOrient: This Method returns the Camera Orientation with the i, j and
     k Axes plotted.
     """
-
+    
     #============================
     #Class Properties/Attributes.
     #============================
@@ -84,15 +101,15 @@ class Image:
         #===================
         #Constructor Method.
         #===================
-        if platform.system() == "Darwin":
-            self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)[::-1,::-1]
-        else:
-            self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)
+        #if platform.system() == "Darwin":
+        #    self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)[::-1,::-1]
+        #else:
+        self._image = cv2.imread(image_path, cv2.CV_LOAD_IMAGE_COLOR)
 
         self._view = self._image[:]
         self._view_scale = 0.65
 
-        # stores x,y,z world coords for each point
+        #Stores x,y,z world coords for each point.
         self._image_points = np.zeros_like(self._image, np.int)
         self.resetImagePoints()
         print "The Dimensions of the Image are:\n"
@@ -107,8 +124,8 @@ class Image:
         self.getFlat3DPoints()
 
         # store triangulation after points are selected
-        self._tri = None
-        self._triImages = []
+        self._grids = None
+        self._selected2DPoints = []
         self._selectedPoints = []
 
     def resetImagePoints(self):
@@ -121,8 +138,11 @@ class Image:
     def interpolateImagePoints(self, points):
         t_row, t_col = np.ogrid[0:self._image.shape[0], 0:self._image.shape[1]]
         values = [self.getZAt(*p) for p in points]
-        interpZ = griddata([x[0] for x in points], [x[1] for x in points], values,
-                           t_col.tolist()[0], t_row.transpose().tolist()[0],
+        interpZ = griddata([x[0] for x in points],
+                           [x[1] for x in points],
+                           values,
+                           t_col.tolist()[0],
+                           t_row.transpose().tolist()[0],
                            "linear")
         self._image_points[t_row, t_col, 2] = interpZ
 
@@ -183,95 +203,145 @@ class Image:
         y *= self._view_scale
         return (int(x), int(y))
 
-    def triangulate(self, points):
-        xwidth = 21
+    def gridimage(self, points):
+        # setup grid
+        xwidth = 41
         ywidth = int(xwidth*(float(self.getHeight())/self.getWidth()))
         x, y = np.meshgrid(range(xwidth),range(ywidth))
         x = ((self.getWidth()-1)/(xwidth-1)) * x.flatten()
         y = ((self.getHeight()-1)/(ywidth-1)) * y.flatten()
+        gridPoints = np.array(zip(x, y)).astype(np.float32)
 
-        extendedPoints = np.array(zip(x, y)).astype(np.float32)
+        # compute individual grid points
+        grid = np.array(range(xwidth*ywidth)).reshape(ywidth, xwidth)
+        p1 = grid[0:-1, 0:-1].reshape((xwidth-1)*(ywidth-1))
+        p2 = grid[0:-1, 1:xwidth].reshape((xwidth-1)*(ywidth-1))
+        p3 = grid[1:ywidth, 1:xwidth].reshape((xwidth-1)*(ywidth-1))
+        p4 = grid[1:ywidth, 0:-1].reshape((xwidth-1)*(ywidth-1))
+        self._grids = np.array(zip(p1, p2, p3, p4))
 
-        #self._selected2DPoints = np.array(points).astype(np.float32)
-        #self._selected2DPoints = np.concatenate((self._selected2DPoints,
-        #                                         extendedPoints))
-        self._selected2DPoints = extendedPoints
+        # setup point values
+        self._selected2DPoints = gridPoints
         self._selectedPoints = [(self.getXAt(*p),
                                  self.getYAt(*p),
                                  self.getZAt(*p),) for p in self._selected2DPoints]
         self._selectedPoints = np.array(self._selectedPoints).astype(np.float32)
-        self._tri = Triangulation(self._selected2DPoints[:,0],
-                                  self._selected2DPoints[:,1])
-        self._tri.set_mask(TriAnalyzer(self._tri).get_flat_tri_mask())
-        self._triImages = []
-        # cache image for each triangle
-        for triangle in self._tri.get_masked_triangles():
-            triPoints = np.array([self._selected2DPoints[p] for p in triangle])
 
-            # cut out triangle image - create mask
-            mask = np.zeros(self._image.shape, dtype=np.uint8)
-            cv2.fillPoly(mask,
-                         np.array([triPoints.astype(np.int)]),
-                         (255, 255, 255))
-            # apply the mask
-            maskedImage = cv2.bitwise_and(self._image, mask)            
-            
-            self._triImages.append(maskedImage)                
-
-    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f):
+    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f, doWireframe=False):
         """
         Drawing using selected points + triangles
         """
-        uvPoints = self.persProj(self._selectedPoints,
-                                 arrayCamTrans,
-                                 matCamOrient,
-                                 int_f = int_f).astype(np.float32)
-        uvPoints[:,0] += self.getWidth()/2
-        uvPoints[:,1] += self.getHeight()/2
+        destination = self.persProj2(self._selectedPoints,
+                                     arrayCamTrans,
+                                     matCamOrient,
+                                     booShowCamTransAndOrient = False,
+                                     int_f = int_f)
+        destination = np.array(destination).astype(np.float32)
+        destination[:,0] += self.getWidth()/2
+        destination[:,1] += self.getHeight()/2
 
-        rows, cols, ch = self._image.shape
+        #check for grids to prune
+        mask = np.zeros(self._image.shape, dtype=np.uint8)
+        finalMask = np.zeros(self._image.shape, dtype=np.uint8)
+        wireframe = np.zeros(self._image.shape, dtype=np.uint8)
+        indices_p = set()
+        grids_p = []
 
-        newImage = np.zeros_like(self._image)
-        for index, triangle in enumerate(self._tri.get_masked_triangles()):
-            newTriPoints = np.array([uvPoints[p] for p in triangle])
-            # skip if facing back
-            if np.cross(newTriPoints[1]-newTriPoints[0],
-                        newTriPoints[2]-newTriPoints[1]) <= 0:
+        for grid in self._grids:
+            p1,p2,p3,p4 = [destination[p] for p in grid]
+
+            # skip if all points the same
+            if (p1.tolist()==p2.tolist() and
+                p2.tolist()==p3.tolist() and
+                p3.tolist()==p4.tolist()):
                 continue
-            # skip if triangle out of display window
-            if not(True in (newTriPoints > 0) and
-                   True in (newTriPoints < self.getWidth())):
-                continue
-            originalTriPoints = np.array([self._selected2DPoints[p]
-                                          for p in triangle])
-            M = cv2.getAffineTransform(originalTriPoints, newTriPoints)
-            dst = cv2.warpAffine(self._triImages[index], M, (cols, rows))
 
-            """
-            mask = np.zeros(self._image.shape, dtype=np.uint8)
+            # skip if back facing
+            if (np.cross((p2-p1), (p3-p2)) <= 0 and
+                np.cross((p3-p2), (p4-p3)) <= 0):
+                continue
+
+            # skip points outside
+            pall = np.array([p1,p2,p3,p4])
+            if not (((pall[:,0] >= -(self.getWidth()*3)).all() and
+                     (pall[:,0] < (self.getWidth()*3)).all()) and
+                    ((pall[:,1] >= -(self.getHeight()*3)).all() and
+                     (pall[:,1] < (self.getHeight()*3)).all())):
+                continue
+
+            [indices_p.add(p) for p in grid]
+            grids_p.append(grid)
             cv2.fillPoly(mask,
-                         np.array([newTriPoints.astype(np.int)]),
+                         np.array([np.array([self._selected2DPoints[p] for p in grid]).astype(np.int)]),
                          (255, 255, 255))
-            # apply the mask
-            dst = cv2.bitwise_and(dst, mask)
+            cv2.fillPoly(finalMask,
+                         np.array([np.array([destination[p] for p in grid]).astype(np.int)]),
+                         (255, 255, 255))
+
+            # draw wireframe
+            cv2.line(wireframe,
+                     tuple(destination[grid[0]]),
+                     tuple(destination[grid[1]]),
+                     (0,255,0))
+            cv2.line(wireframe,
+                     tuple(destination[grid[1]]),
+                     tuple(destination[grid[2]]),
+                     (0,255,0))
+            cv2.line(wireframe,
+                     tuple(destination[grid[2]]),
+                     tuple(destination[grid[3]]),
+                     (0,255,0))
+            cv2.line(wireframe,
+                     tuple(destination[grid[3]]),
+                     tuple(destination[grid[0]]),
+                     (0,255,0))
+
+            """
+            cv2.imshow("TEST", cv2.resize(wireframe, (0,0), fx=0.2, fy=0.2))
+            cv2.imshow("TEST2", cv2.resize(cv2.bitwise_and(self._image, mask), (0,0), fx=0.2, fy=0.2))
+            print grid
+            print [self._selected2DPoints[x] for x in grid]
+            print [destination[x] for x in grid]
+            cv2.waitKey(0)
             """
 
-            newImage = np.maximum(dst, newImage)
-        return newImage
+        indices_p = sorted(list(indices_p))
+        destination_p = np.array([destination[x] for x in indices_p])
+        selected2DPoints_p = np.array([self._selected2DPoints[x] for x in indices_p])
 
-    def getImageFromCam2(self, arrayCamTrans, matCamOrient):
+        # remap/warp image
+        t_row, t_col = np.ogrid[0:self.getHeight(), 0:self.getWidth()]
+        interp_x = griddata(destination_p[:,0], destination_p[:,1], selected2DPoints_p[:,0],
+                            t_col.tolist()[0], t_row.transpose().tolist()[0],
+                            "linear")
+        interp_y = griddata(destination_p[:,0], destination_p[:,1], selected2DPoints_p[:,1],
+                            t_col.tolist()[0], t_row.transpose().tolist()[0],
+                            "linear")
+        warped = cv2.remap(cv2.bitwise_and(self._image, mask),
+                           interp_x.astype(np.float32),
+                           interp_y.astype(np.float32),
+                           cv2.INTER_LINEAR,
+                           borderMode=cv2.BORDER_CONSTANT)
+
+        retImage = cv2.bitwise_and(warped, finalMask)
+        if doWireframe:
+            retImage = np.maximum(wireframe, retImage)
+        return retImage
+
+    def getImageFromCamPoints(self, arrayCamTrans, matCamOrient, int_f):
         """
         Drawing using all points
         """
+        skip = 10
         newImage = self._image.reshape((self.getHeight()*self.getWidth(), 3))
-        newImage = newImage[0:self.getHeight()*self.getWidth():75]
+        newImage = newImage[0:self.getHeight()*self.getWidth():skip]
         newImagePoints = self._image_points.reshape((self.getHeight()*self.getWidth(), 3))
-        newImagePoints = newImagePoints[0:self.getHeight()*self.getWidth():75]
+        newImagePoints = newImagePoints[0:self.getHeight()*self.getWidth():skip]
 
-        uvPoints = self.persProj(newImagePoints,
-                                 arrayCamTrans,
-                                 matCamOrient,
-                                 int_f = 350).astype(np.float32)
+        uvPoints = self.persProj2(newImagePoints,
+                                  arrayCamTrans,
+                                  matCamOrient,
+                                  int_f = int_f).astype(np.float32)
         uvPoints[:,0] += self.getWidth()/2
         uvPoints[:,1] += self.getHeight()/2
 
@@ -279,7 +349,10 @@ class Image:
         for index, point in enumerate(uvPoints):
             point = tuple(np.array(point).flatten())
             color = tuple(newImage[index])
-            cv2.circle(retImage, point, 2, [int(x) for x in color] )
+            try:
+                cv2.circle(retImage, point, 2, [int(x) for x in color] )
+            except OverflowError:
+                pass
         
         return retImage
 
@@ -298,6 +371,9 @@ class Image:
         intRows = array3DScPts.shape[0]
         matProjPts = np.zeros([1, 2])
 
+        #===================================
+        #Compute the Perspective Projection.
+        #===================================
         for intRowIndex in range(0, intRows, 1):
             #===============================
             #Extract Current 3D Coordinates.
@@ -332,10 +408,83 @@ class Image:
                 #Subsequent Rotated Point.
                 #=========================
                 matProjPts = np.append(matProjPts, [ufp, vfp])
-
+        
         #==========================
         #Return the 2D Coordinates.
         #==========================
+        matProjPts = np.matrix(matProjPts)
+        intRows = matProjPts.shape[0]
+        intColumns = matProjPts.shape[1]
+        intElements = intRows * intColumns
+        intNewRows = int(intElements / 2)
+        matProjPts = np.reshape(matProjPts, (intNewRows, 2))
+        return(matProjPts)
+
+    def persProj2(self, array3DScPts, arrayCamTrans, matCamOrient,
+                  booShowCamTransAndOrient = True,
+                  strCamTransFigTitle = "Current Frame Camera Translation",
+                  strCamOrientFigTitle = "Current Frame Camera Orientation",
+                  int_f = 1, int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0,
+                  int_bv = 1, int_kv = 1):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        i_f = np.transpose(matCamOrient[0, :])
+        j_f = np.transpose(matCamOrient[1, :])
+        k_f = np.transpose(matCamOrient[2, :])
+        ufp = []
+        vfp = []
+        intRows = array3DScPts.shape[0]
+        matProjPts = []
+
+        #=============================
+        #Compute the (sp - tf) Matrix.
+        #=============================
+        sp_minus_tf = (array3DScPts - arrayCamTrans)
+
+        #====
+        #ufp.
+        #====
+        fltNumerator = int_f * np.dot(sp_minus_tf, i_f)
+        fltDenominator = np.dot(sp_minus_tf, k_f)
+        ufp = fltNumerator / fltDenominator
+
+        #====
+        #vfp.
+        #====
+        fltNumerator = int_f * np.dot(sp_minus_tf, j_f)
+        fltDenominator = np.dot(sp_minus_tf, k_f)
+        vfp = fltNumerator / fltDenominator
+        
+        for intRowIndex, listRow in enumerate(zip(ufp, vfp)):
+            listTemp = np.array(listRow)
+            u, v = listTemp.ravel()
+            
+            #=============================
+            #Store the Projected 2D Point.
+            #=============================
+            if(intRowIndex == 0):
+                #=========================
+                #First Projected 2D Point.
+                #=========================
+                matProjPts = [u, v]
+            else:
+                #=========================
+                #Subsequent Rotated Point.
+                #=========================
+                matProjPts = np.append([matProjPts], [u, v])
+
+        #==========================================================
+        #Plot the Current Frame Camera Translation and Orientation.
+        #==========================================================
+        if(booShowCamTransAndOrient):
+            self.plotCamTransAndOrient(arrayCamTrans, strCamTransFigTitle,
+                                       matCamOrient, strCamOrientFigTitle)
+        
+        #==========================
+        #Return the 2D Coordinates.
+        #==========================        
         matProjPts = np.matrix(matProjPts)
         intRows = matProjPts.shape[0]
         intColumns = matProjPts.shape[1]
@@ -352,7 +501,7 @@ class Image:
         import matplotlib
         import matplotlib.pyplot as plt
         plt.suptitle(strPlotTitle)
-
+        
         #=======================================================
         #Build the Subplots comprising the 3D-to-2D Projections.
         #=======================================================
@@ -376,6 +525,18 @@ class Image:
         #Display the 3D-to-2D Projection Plot for the 4 Frames.
         #======================================================
         plt.show()
+
+    def plotCamTransAndOrient(self, arrayCFCamTrans, strCamTransFigTitle,
+                              arrayCFCamOrient, strCamOrientFigTitle):
+        #========================
+        #Camera Translation Plot.
+        #========================
+        self.dispCamTrans(arrayCFCamTrans, strCamTransFigTitle)
+
+        #========================
+        #Camera Orientation Plot.
+        #========================
+        self.dispCamOrient(arrayCFCamOrient, strCamOrientFigTitle)
 
     def show_image(self, image, image_title):
         cv2.namedWindow(image_title)
@@ -700,6 +861,304 @@ class Image:
         #Display the Camera Orientation.
         #===============================
         pltCurrent.show()
+
+        
+    def _normalise(self, listInput):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        import math as ma
+        intLength = len(listInput)
+        listInput_normalised = np.zeros(intLength)
+        listInput_mag_square = \
+                             sum(fltElement * fltElement\
+                                 for fltElement in listInput)
+        listInput_mag = ma.sqrt(listInput_mag_square)
+
+        #==========================
+        #Perform the Normalisation.
+        #==========================
+        for intIndex in range(0, intLength, 1):
+            listInput_normalised[intIndex] = listInput[intIndex] / listInput_mag
+
+        #=============================
+        #Return the Normalised Vector.
+        #=============================
+        return(listInput_normalised)
+
+    def _quatConj(self, q):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        sq = q[0]
+        vq = [0, 0, 0]
+        neg_vq = [0, 0, 0]
+        vq[0] = q[1]
+        vq[1] = q[2]
+        vq[2] = q[3]
+        neg_vq[0] = -1 * vq[0]
+        neg_vq[1] = -1 * vq[1]
+        neg_vq[2] = -1 * vq[2]
+
+        #======================
+        #Compute the Conjugate.
+        #======================
+        q_conj = np.append(sq, neg_vq)
+
+        #=======================================
+        #Return the Conjugate of the Quaternion.
+        #=======================================
+        return(q_conj)
+
+    def _point2Quat(self, arrPointVector):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        sq = 0
+        vq = arrPointVector
+
+        #======================================
+        #Compose the Quaternion Representation.
+        #======================================
+        q = np.append(sq, vq)
+        vq = q[1:]
+
+        #===================
+        #Return the Outputs.
+        #===================
+        return(sq, vq, q)
+
+    def _rot2Quat(self, fltTheta, wx, wy, wz):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        import math as ma
+        wx, wy, wz = self._normalise([wx, wy, wz])
+        vq = np.zeros([1, 3])
+        fltTheta_radians = ma.radians(fltTheta)
+
+        #=============================
+        #Compute the Scalar Component.
+        #=============================
+        sq = ma.cos(fltTheta_radians / 2)
+
+        #=============================
+        #Compute the Vector Component.
+        #=============================
+        vq[0, 0] = ma.sin(fltTheta_radians / 2) * wx
+        vq[0, 1] = ma.sin(fltTheta_radians / 2) * wy
+        vq[0, 2] = ma.sin(fltTheta_radians / 2) * wz
+
+        #========================================================
+        #Construct the Quaternion Representation of the Rotation.
+        #========================================================
+        q = np.append(sq, vq)
+
+        #===============================================================
+        #Return the Quarternion Representation of the Rotation provided.
+        #===============================================================
+        return(sq, vq, q)
+
+    def _quatMult(self, q1, q2):
+        #===============
+        #Initialisation.
+        #===============
+        out = [0, 0, 0, 0]
+        q1_0 = q1[0]
+        q1_1 = q1[1]
+        q1_2 = q1[2]
+        q1_3 = q1[3]
+        q2_0 = q2[0]
+        q2_1 = q2[1]
+        q2_2 = q2[2]
+        q2_3 = q2[3]
+
+        #======================================
+        #Perform the Quaternion Multiplication.
+        #======================================
+        out[0] = (q1_0 * q2_0) - (q1_1 * q2_1) - (q1_2 * q2_2) - (q1_3 * q2_3)
+        out[1] = (q1_0 * q2_1) + (q1_1 * q2_0) + (q1_2 * q2_3) - (q1_3 * q2_2)
+        out[2] = (q1_0 * q2_2) - (q1_1 * q2_3) + (q1_2 * q2_0) + (q1_3 * q2_1)
+        out[3] = (q1_0 * q2_3) + (q1_1 * q2_2) - (q1_2 * q2_1) + (q1_3 * q2_0)
+
+        #==================
+        #Return the Result.
+        #==================
+        return out
+
+    def _quat2Rot(self, q):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        Rq = np.zeros([3, 3])
+        q = self._normalise(q)
+        q_0 = q[0]
+        q_1 = q[1]
+        q_2 = q[2]
+        q_3 = q[3]
+
+        #============================
+        #Compute the Rotation Matrix.
+        #============================
+        Rq[0, 0] = (q_0 * q_0) + (q_1 * q_1) - (q_2 * q_2) - (q_3 * q_3)
+        Rq[0, 1] = 2 * ((q_1 * q_2) - (q_0 * q_3))
+        Rq[0, 2] = 2 * ((q_1 * q_3) + (q_0 * q_2))
+        Rq[1, 0] = 2 * ((q_1 * q_2) + (q_0 * q_3))
+        Rq[1, 1] = (q_0 * q_0) + (q_2 * q_2) - (q_1 * q_1) - (q_3 * q_3)
+        Rq[1, 2] = 2 * ((q_2 * q_3) - (q_0 * q_1))
+        Rq[2, 0] = 2 * ((q_1 * q_3) - (q_0 * q_2))
+        Rq[2, 1] = 2 * ((q_2 * q_3) + (q_0 * q_1))
+        Rq[2, 2] = (q_0 * q_0) + (q_3 * q_3) - (q_1 * q_1) - (q_2 * q_2)
+
+        #===========================
+        #Return the Rotation Matrix.
+        #===========================
+        return Rq
+
+    def _rotByQuatMult(self, pt, fltTheta, wx, wy, wz, intIterations):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        matRotatedPoints = np.zeros([1, 3])
+        pt2rot = pt
+
+        #===================================================================
+        #Perform the Rotation using Quaternion Multiplications and store the
+        #Rotated Points in an Array containing the Rotated Points.
+        #===================================================================
+        for intIndex in range(0, intIterations, 1):
+            #======================================================
+            #Perform the Rotation using Quaternion Multiplications.
+            #======================================================
+            sp, vp, p = self._point2Quat(pt2rot)
+            sq, vq, q = self._rot2Quat(fltTheta, wx, wy, wz)
+            q_conj = self._quatConj(q)
+            qp = self._quatMult(q, p)
+            p_rot = self._quatMult(qp, q_conj)
+
+            #============================================================
+            #Store the Rotated Point, discard the Scalar Portion of qpq*.
+            #============================================================
+            if(intIndex == 0):
+                #====================
+                #First Rotated Point.
+                #====================
+                matRotatedPoints[0, 0] = p_rot[1]
+                matRotatedPoints[0, 1] = p_rot[2]
+                matRotatedPoints[0, 2] = p_rot[3]
+            else:
+                #=========================
+                #Subsequent Rotated Point.
+                #=========================
+                arrayTemp = [0, 0, 0]
+                arrayTemp[0] = p_rot[1]
+                arrayTemp[1] = p_rot[2]
+                arrayTemp[2] = p_rot[3]
+                matRotatedPoints = np.append([matRotatedPoints], [arrayTemp])
+
+            #==================================
+            #Change Starting Point of Rotation.
+            #==================================
+            pt2rot = [p_rot[1], p_rot[2], p_rot[3]]
+            arrayTemp = np.zeros([1, 3])
+
+        #===============================================
+        #Return the Array containing the Rotated Points.
+        #===============================================
+        matRotatedPoints = np.matrix(matRotatedPoints)
+        intRows = matRotatedPoints.shape[0]
+        intColumns = matRotatedPoints.shape[1]
+        intElements = intRows * intColumns
+        intNewRows = int(intElements / 3)
+        matRotatedPoints = np.reshape(matRotatedPoints, (intNewRows, 3))
+        return(matRotatedPoints)
+
+    def _rotByRotMat(self, matCamFr, fltTheta, wx, wy, wz, intIterations):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        matCamFr = np.matrix(matCamFr)
+        matCurrentCamFr = np.zeros([3, 3])
+
+        #===============================
+        #Obtain the Rotation Quaternion.
+        #===============================
+        s_qrot, v_qrot, q_rot = self._rot2Quat(fltTheta, wx, wy, wz)
+        matRot = np.matrix(self._quat2Rot(q_rot))
+
+        #=======================================================================
+        #Perform the Rotation using Matrix Multiplications and store the Rotated
+        #Camera Orientations in an n x 3 Array containing the Rotated Points.
+        #=======================================================================
+        for intIndex in range(0, intIterations, 1):
+            #==================================================================
+            #Perform the Matrix Multiplication utilisating the Rotation Matrix.
+            #==================================================================
+            for intSquareIndex in range(0, 3, 1):
+                listPt = matCamFr[intSquareIndex, :]
+                matNewCamPt = matRot * np.transpose(listPt)
+                matCurrentCamFr[intSquareIndex, :] = np.transpose(matNewCamPt)
+
+                #===============================================
+                #Store the Rotated Camera Orientation of Points.
+                #===============================================
+                if(intIndex == 0):
+                    #===========================================
+                    #First Rotated Camera Orientation of Points.
+                    #===========================================
+                    matRotatedPoints = matCurrentCamFr
+                else:
+                    #================================================
+                    #Subsequent Rotated Camera Orientation of Points.
+                    #================================================
+                    matRotatedPoints = np.append([matRotatedPoints],
+                                                 matCurrentCamFr)
+
+            #==================================
+            #Change Starting Point of Rotation.
+            #==================================
+            matCamFr = matCurrentCamFr
+
+        #===============================================
+        #Return the Array containing the Rotated Points.
+        #===============================================
+        matRotatedPoints = np.matrix(matRotatedPoints)
+        intRows = matRotatedPoints.shape[0]
+        intColumns = matRotatedPoints.shape[1]
+        intElements = intRows * intColumns
+        intNewRows = int(intElements / 3)
+        matRotatedPoints = np.reshape(matRotatedPoints, (intNewRows, 3))
+        return(matRotatedPoints)
+
+    def _rotByImage(self, objImage3D, fltTheta, wx, wy, wz, intIterations = 1):
+        #===============
+        #Initialisation.
+        #===============
+        import numpy as np
+        listRotated3DScene = objImage3D._flat_3dpoints
+
+        #===============================
+        #Obtain the Rotation Quaternion.
+        #===============================
+        s_qrot, v_qrot, q_rot = self._rot2Quat(fltTheta, wx, wy, wz)
+        matRot = np.matrix(self._quat2Rot(q_rot))
+
+        #===========================================
+        #Perform the Rotation using Rotation Matrix.
+        #===========================================
+        listRotated3DScene = matRot * np.transpose(listRotated3DScene)
+
+        #==========================
+        #Return the Rotated Points.
+        #==========================
+        return(np.transpose(listRotated3DScene))
 
 
     

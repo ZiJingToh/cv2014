@@ -93,6 +93,7 @@ class Polygon(InputModeHandler):
     will perform the Rotation and return the results in n x 3 Array where n is
     the total number of Rows affected by the number of iterations.
     """
+    
     #========
     #Methods.
     #========
@@ -307,324 +308,27 @@ class Polygon(InputModeHandler):
         Cleanup after exiting state
         """
         print "Cleaning up after Polygon..."
-        self._imageObj.triangulate(self._points)
+        self._imageObj.gridimage(self._points)
 
         # TESTING CODE - TO REMOVE!!
-        img = self._imageObj._image.copy()
-        for e in self._imageObj._tri.edges:
-            cv2.line(img,
-                     tuple(self._imageObj._selected2DPoints[e[0]][:2]),
-                     tuple(self._imageObj._selected2DPoints[e[1]][:2]), (0,255,0))
-        img = self._imageObj.getResizedImage(img)
-        self._window.display(img)
-        cv2.waitKey(0)
+        #img = self._imageObj._image.copy()
+        #for e in self._imageObj._tri.edges:
+        #    cv2.line(img,
+        #             tuple(self._imageObj._selected2DPoints[e[0]][:2]),
+        #             tuple(self._imageObj._selected2DPoints[e[1]][:2]), (0,255,0))
+        #img = self._imageObj.getResizedImage(img)
+        #self._window.display(img)
+        #cv2.waitKey(0)
 
         # TESTING CODE - TO REMOVE!!
         cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, 300]
         orient = np.eye(3)
         for rot in xrange(0,61,20):
-            orient = self._rotByRotMat(np.eye(3), rot, 0, 1, 0, 1)
-            newImage = self._imageObj.getImageFromCam(cam, orient, 500) # np.abs(cam[-1]))
+            orient = self._imageObj._rotByRotMat(np.eye(3), rot, 0, 1, 0, 1)
+            newImage = self._imageObj.getImageFromCam(cam, orient, 500)
             self._window.display(self._imageObj.getResizedImage(newImage))
             #cv2.imwrite(str(rot)+".jpg", newImage)
             cv2.waitKey(0)
-
-    def _normalise(self, listInput):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        import math as ma
-        intLength = len(listInput)
-        listInput_normalised = np.zeros(intLength)
-        listInput_mag_square = \
-                             sum(fltElement * fltElement\
-                                 for fltElement in listInput)
-        listInput_mag = ma.sqrt(listInput_mag_square)
-
-        #==========================
-        #Perform the Normalisation.
-        #==========================
-        for intIndex in range(0, intLength, 1):
-            listInput_normalised[intIndex] = listInput[intIndex] / listInput_mag
-
-        #=============================
-        #Return the Normalised Vector.
-        #=============================
-        return(listInput_normalised)
-
-    def _quatConj(self, q):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        sq = q[0]
-        vq = [0, 0, 0]
-        neg_vq = [0, 0, 0]
-        vq[0] = q[1]
-        vq[1] = q[2]
-        vq[2] = q[3]
-        neg_vq[0] = -1 * vq[0]
-        neg_vq[1] = -1 * vq[1]
-        neg_vq[2] = -1 * vq[2]
-
-        #======================
-        #Compute the Conjugate.
-        #======================
-        q_conj = np.append(sq, neg_vq)
-
-        #=======================================
-        #Return the Conjugate of the Quaternion.
-        #=======================================
-        return(q_conj)
-
-    def _point2Quat(self, arrPointVector):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        sq = 0
-        vq = arrPointVector
-
-        #======================================
-        #Compose the Quaternion Representation.
-        #======================================
-        q = np.append(sq, vq)
-        vq = q[1:]
-
-        #===================
-        #Return the Outputs.
-        #===================
-        return(sq, vq, q)
-
-    def _rot2Quat(self, fltTheta, wx, wy, wz):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        import math as ma
-        wx, wy, wz = self._normalise([wx, wy, wz])
-        vq = np.zeros([1, 3])
-        fltTheta_radians = ma.radians(fltTheta)
-
-        #=============================
-        #Compute the Scalar Component.
-        #=============================
-        sq = ma.cos(fltTheta_radians / 2)
-
-        #=============================
-        #Compute the Vector Component.
-        #=============================
-        vq[0, 0] = ma.sin(fltTheta_radians / 2) * wx
-        vq[0, 1] = ma.sin(fltTheta_radians / 2) * wy
-        vq[0, 2] = ma.sin(fltTheta_radians / 2) * wz
-
-        #========================================================
-        #Construct the Quaternion Representation of the Rotation.
-        #========================================================
-        q = np.append(sq, vq)
-
-        #===============================================================
-        #Return the Quarternion Representation of the Rotation provided.
-        #===============================================================
-        return(sq, vq, q)
-
-    def _quatMult(self, q1, q2):
-        #===============
-        #Initialisation.
-        #===============
-        out = [0, 0, 0, 0]
-        q1_0 = q1[0]
-        q1_1 = q1[1]
-        q1_2 = q1[2]
-        q1_3 = q1[3]
-        q2_0 = q2[0]
-        q2_1 = q2[1]
-        q2_2 = q2[2]
-        q2_3 = q2[3]
-
-        #======================================
-        #Perform the Quaternion Multiplication.
-        #======================================
-        out[0] = (q1_0 * q2_0) - (q1_1 * q2_1) - (q1_2 * q2_2) - (q1_3 * q2_3)
-        out[1] = (q1_0 * q2_1) + (q1_1 * q2_0) + (q1_2 * q2_3) - (q1_3 * q2_2)
-        out[2] = (q1_0 * q2_2) - (q1_1 * q2_3) + (q1_2 * q2_0) + (q1_3 * q2_1)
-        out[3] = (q1_0 * q2_3) + (q1_1 * q2_2) - (q1_2 * q2_1) + (q1_3 * q2_0)
-
-        #==================
-        #Return the Result.
-        #==================
-        return out
-
-    def _quat2Rot(self, q):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        Rq = np.zeros([3, 3])
-        q = self._normalise(q)
-        q_0 = q[0]
-        q_1 = q[1]
-        q_2 = q[2]
-        q_3 = q[3]
-
-        #============================
-        #Compute the Rotation Matrix.
-        #============================
-        Rq[0, 0] = (q_0 * q_0) + (q_1 * q_1) - (q_2 * q_2) - (q_3 * q_3)
-        Rq[0, 1] = 2 * ((q_1 * q_2) - (q_0 * q_3))
-        Rq[0, 2] = 2 * ((q_1 * q_3) + (q_0 * q_2))
-        Rq[1, 0] = 2 * ((q_1 * q_2) + (q_0 * q_3))
-        Rq[1, 1] = (q_0 * q_0) + (q_2 * q_2) - (q_1 * q_1) - (q_3 * q_3)
-        Rq[1, 2] = 2 * ((q_2 * q_3) - (q_0 * q_1))
-        Rq[2, 0] = 2 * ((q_1 * q_3) - (q_0 * q_2))
-        Rq[2, 1] = 2 * ((q_2 * q_3) + (q_0 * q_1))
-        Rq[2, 2] = (q_0 * q_0) + (q_3 * q_3) - (q_1 * q_1) - (q_2 * q_2)
-
-        #===========================
-        #Return the Rotation Matrix.
-        #===========================
-        return Rq
-
-    def _rotByQuatMult(self, pt, fltTheta, wx, wy, wz, intIterations):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        matRotatedPoints = np.zeros([1, 3])
-        pt2rot = pt
-
-        #===================================================================
-        #Perform the Rotation using Quaternion Multiplications and store the
-        #Rotated Points in an Array containing the Rotated Points.
-        #===================================================================
-        for intIndex in range(0, intIterations, 1):
-            #======================================================
-            #Perform the Rotation using Quaternion Multiplications.
-            #======================================================
-            sp, vp, p = self._point2Quat(pt2rot)
-            sq, vq, q = self._rot2Quat(fltTheta, wx, wy, wz)
-            q_conj = self._quatConj(q)
-            qp = self._quatMult(q, p)
-            p_rot = self._quatMult(qp, q_conj)
-
-            #============================================================
-            #Store the Rotated Point, discard the Scalar Portion of qpq*.
-            #============================================================
-            if(intIndex == 0):
-                #====================
-                #First Rotated Point.
-                #====================
-                matRotatedPoints[0, 0] = p_rot[1]
-                matRotatedPoints[0, 1] = p_rot[2]
-                matRotatedPoints[0, 2] = p_rot[3]
-            else:
-                #=========================
-                #Subsequent Rotated Point.
-                #=========================
-                arrayTemp = [0, 0, 0]
-                arrayTemp[0] = p_rot[1]
-                arrayTemp[1] = p_rot[2]
-                arrayTemp[2] = p_rot[3]
-                matRotatedPoints = np.append([matRotatedPoints], [arrayTemp])
-
-            #==================================
-            #Change Starting Point of Rotation.
-            #==================================
-            pt2rot = [p_rot[1], p_rot[2], p_rot[3]]
-            arrayTemp = np.zeros([1, 3])
-
-        #===============================================
-        #Return the Array containing the Rotated Points.
-        #===============================================
-        matRotatedPoints = np.matrix(matRotatedPoints)
-        intRows = matRotatedPoints.shape[0]
-        intColumns = matRotatedPoints.shape[1]
-        intElements = intRows * intColumns
-        intNewRows = int(intElements / 3)
-        matRotatedPoints = np.reshape(matRotatedPoints, (intNewRows, 3))
-        return(matRotatedPoints)
-
-    def _rotByRotMat(self, matCamFr, fltTheta, wx, wy, wz, intIterations):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        matCamFr = np.matrix(matCamFr)
-        matCurrentCamFr = np.zeros([3, 3])
-
-        #===============================
-        #Obtain the Rotation Quaternion.
-        #===============================
-        s_qrot, v_qrot, q_rot = self._rot2Quat(fltTheta, wx, wy, wz)
-        matRot = np.matrix(self._quat2Rot(q_rot))
-
-        #=======================================================================
-        #Perform the Rotation using Matrix Multiplications and store the Rotated
-        #Camera Orientations in an n x 3 Array containing the Rotated Points.
-        #=======================================================================
-        for intIndex in range(0, intIterations, 1):
-            #==================================================================
-            #Perform the Matrix Multiplication utilisating the Rotation Matrix.
-            #==================================================================
-            for intSquareIndex in range(0, 3, 1):
-                listPt = matCamFr[intSquareIndex, :]
-                matNewCamPt = matRot * np.transpose(listPt)
-                matCurrentCamFr[intSquareIndex, :] = np.transpose(matNewCamPt)
-
-                #===============================================
-                #Store the Rotated Camera Orientation of Points.
-                #===============================================
-                if(intIndex == 0):
-                    #===========================================
-                    #First Rotated Camera Orientation of Points.
-                    #===========================================
-                    matRotatedPoints = matCurrentCamFr
-                else:
-                    #================================================
-                    #Subsequent Rotated Camera Orientation of Points.
-                    #================================================
-                    matRotatedPoints = np.append([matRotatedPoints],
-                                                 matCurrentCamFr)
-
-            #==================================
-            #Change Starting Point of Rotation.
-            #==================================
-            matCamFr = matCurrentCamFr
-
-        #===============================================
-        #Return the Array containing the Rotated Points.
-        #===============================================
-        matRotatedPoints = np.matrix(matRotatedPoints)
-        intRows = matRotatedPoints.shape[0]
-        intColumns = matRotatedPoints.shape[1]
-        intElements = intRows * intColumns
-        intNewRows = int(intElements / 3)
-        matRotatedPoints = np.reshape(matRotatedPoints, (intNewRows, 3))
-        return(matRotatedPoints)
-
-    def _rotByImage(self, objImage3D, fltTheta, wx, wy, wz, intIterations = 1):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        listRotated3DScene = objImage3D._flat_3dpoints
-
-        #===============================
-        #Obtain the Rotation Quaternion.
-        #===============================
-        s_qrot, v_qrot, q_rot = self._rot2Quat(fltTheta, wx, wy, wz)
-        matRot = np.matrix(self._quat2Rot(q_rot))
-
-        #===========================================
-        #Perform the Rotation using Rotation Matrix.
-        #===========================================
-        listRotated3DScene = matRot * np.transpose(listRotated3DScene)
-
-        #==========================
-        #Return the Rotated Points.
-        #==========================
-        return(np.transpose(listRotated3DScene))
         
 
 

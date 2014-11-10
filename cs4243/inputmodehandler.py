@@ -39,6 +39,13 @@ class InputModeHandler(object):
     """
 
 class InputModeHandler(object):
+    #======================
+    #Properties/Attributes.
+    #======================
+    _modeName = None
+    _mouseEvents = None
+    _keyboardEvents = None
+
     #========
     #Methods.
     #========
