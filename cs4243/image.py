@@ -137,10 +137,30 @@ class Image:
 
     def interpolateImagePoints(self, points):
         t_row, t_col = np.ogrid[0:self._image.shape[0], 0:self._image.shape[1]]
-        values = [self.getZAt(*p) for p in points]
+
+        xValues = [self.getXAt(*p) for p in points]
+        yValues = [self.getYAt(*p) for p in points]
+        zValues = [self.getZAt(*p) for p in points]
+
+        interpX = griddata([x[0] for x in points],
+                           [x[1] for x in points],
+                           xValues,
+                           t_col.tolist()[0],
+                           t_row.transpose().tolist()[0],
+                           "linear")
+        self._image_points[t_row, t_col, 0] = interpX
+
+        interpY = griddata([x[0] for x in points],
+                           [x[1] for x in points],
+                           yValues,
+                           t_col.tolist()[0],
+                           t_row.transpose().tolist()[0],
+                           "linear")
+        self._image_points[t_row, t_col, 1] = interpY
+
         interpZ = griddata([x[0] for x in points],
                            [x[1] for x in points],
-                           values,
+                           zValues,
                            t_col.tolist()[0],
                            t_row.transpose().tolist()[0],
                            "linear")
@@ -205,7 +225,7 @@ class Image:
 
     def gridimage(self, points):
         # setup grid
-        xwidth = 41
+        xwidth = 51
         ywidth = int(xwidth*(float(self.getHeight())/self.getWidth()))
         x, y = np.meshgrid(range(xwidth),range(ywidth))
         x = ((self.getWidth()-1)/(xwidth-1)) * x.flatten()
@@ -227,7 +247,7 @@ class Image:
                                  self.getZAt(*p),) for p in self._selected2DPoints]
         self._selectedPoints = np.array(self._selectedPoints).astype(np.float32)
 
-    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f, doWireframe=False):
+    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f, doWireframe=True):
         """
         Drawing using selected points + triangles
         """
@@ -249,11 +269,10 @@ class Image:
 
         for grid in self._grids:
             p1,p2,p3,p4 = [destination[p] for p in grid]
+            pset = set([tuple(p1), tuple(p2), tuple(p3), tuple(p4)])
 
             # skip if all points the same
-            if (p1.tolist()==p2.tolist() and
-                p2.tolist()==p3.tolist() and
-                p3.tolist()==p4.tolist()):
+            if len(pset) <= 2:
                 continue
 
             # skip if back facing
@@ -332,7 +351,7 @@ class Image:
         """
         Drawing using all points
         """
-        skip = 10
+        skip = 75
         newImage = self._image.reshape((self.getHeight()*self.getWidth(), 3))
         newImage = newImage[0:self.getHeight()*self.getWidth():skip]
         newImagePoints = self._image_points.reshape((self.getHeight()*self.getWidth(), 3))
@@ -341,6 +360,7 @@ class Image:
         uvPoints = self.persProj2(newImagePoints,
                                   arrayCamTrans,
                                   matCamOrient,
+                                  booShowCamTransAndOrient = False,
                                   int_f = int_f).astype(np.float32)
         uvPoints[:,0] += self.getWidth()/2
         uvPoints[:,1] += self.getHeight()/2
@@ -350,10 +370,12 @@ class Image:
             point = tuple(np.array(point).flatten())
             color = tuple(newImage[index])
             try:
-                cv2.circle(retImage, point, 2, [int(x) for x in color] )
+                cv2.circle(retImage, point, 3, [int(x) for x in color])
             except OverflowError:
                 pass
-        
+            except ValueError:
+                pass
+        print "image"
         return retImage
 
     def persProj(self, array3DScPts, arrayCamTrans, matCamOrient, int_f = 1,
@@ -421,7 +443,7 @@ class Image:
         return(matProjPts)
 
     def persProj2(self, array3DScPts, arrayCamTrans, matCamOrient,
-                  booShowCamTransAndOrient = True,
+                  booShowCamTransAndOrient = False,
                   strCamTransFigTitle = "Current Frame Camera Translation",
                   strCamOrientFigTitle = "Current Frame Camera Orientation",
                   int_f = 1, int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0,
@@ -456,7 +478,8 @@ class Image:
         fltNumerator = int_f * np.dot(sp_minus_tf, j_f)
         fltDenominator = np.dot(sp_minus_tf, k_f)
         vfp = fltNumerator / fltDenominator
-        
+
+        """
         for intRowIndex, listRow in enumerate(zip(ufp, vfp)):
             listTemp = np.array(listRow)
             u, v = listTemp.ravel()
@@ -474,6 +497,8 @@ class Image:
                 #Subsequent Rotated Point.
                 #=========================
                 matProjPts = np.append([matProjPts], [u, v])
+        """
+        matProjPts = np.array(zip(ufp, vfp))
 
         #==========================================================
         #Plot the Current Frame Camera Translation and Orientation.

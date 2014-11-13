@@ -321,14 +321,14 @@ class Polygon(InputModeHandler):
         #cv2.waitKey(0)
 
         # TESTING CODE - TO REMOVE!!
-        cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, 300]
+        '''cam = [self._imageObj.getWidth()/2, self._imageObj.getHeight()/2, 300]
         orient = np.eye(3)
         for rot in xrange(0,61,20):
             orient = self._imageObj._rotByRotMat(np.eye(3), rot, 0, 1, 0, 1)
             newImage = self._imageObj.getImageFromCam(cam, orient, 500)
             self._window.display(self._imageObj.getResizedImage(newImage))
             #cv2.imwrite(str(rot)+".jpg", newImage)
-            cv2.waitKey(0)
+            cv2.waitKey(0)'''
         
 
 
