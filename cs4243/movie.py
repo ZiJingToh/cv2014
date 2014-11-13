@@ -89,8 +89,8 @@ class Movie(InputModeHandler):
         self.INITIALCAMERADATA = [self.IMAGE_WIDTH/2, self.IMAGE_HEIGHT/2, 0, 0, np.identity(3)]
         
         #DIVX video encoding in avi container, 25fps, resolution = imagewidth x imageheight
-        fourcc = cv2.cv.CV_FOURCC('D','I','V','X')
-        self._video  = cv2.VideoWriter('output.avi', fourcc, 25, (self.IMAGE_WIDTH, self.IMAGE_HEIGHT));
+        #fourcc = cv2.cv.CV_FOURCC('D','I','V','X')
+        #self._video  = cv2.VideoWriter('output.avi', fourcc, 25, (self.IMAGE_WIDTH, self.IMAGE_HEIGHT));
         
         self.ClearSetPoints()
         
@@ -98,7 +98,7 @@ class Movie(InputModeHandler):
     def ClearSetPoints(self, key=None):
         self.cameraData = self.INITIALCAMERADATA
         self.cameraDataSet = []
-        self.cameraDataSet.append(self.cameraData)
+        self.cameraDataSet.append(self.cameraData[:])
         self.frameCount = 0
         
     #revert to last saved point, cannot revert to last unsaved point
@@ -274,51 +274,51 @@ class Movie(InputModeHandler):
                 newImage = self._imageObj.getImageFromCam(tempCamPos, tempCamRotMat, self.focal)
                 self._window.display(self._imageObj.getResizedImage(newImage))                                         
         elif key == chr(13):
-            if(self.frameCount >= 30):
+            if(self.frameCount >= 60):
                 print "error exceeding frame 30"
                 #print error, exceed maximum camera point
                     
             else:        
-                self.cameraDataSet.append(self.cameraData)
+                self.cameraDataSet.append(self.cameraData[:])
+                #print self.frameCount, ":::", self.cameraDataSet
                 self.frameCount += 1                  
             
     def UILoadCameraData(self, key):
         print "Loading camera data..."  
                 
     def _UIkeyframe(self,key):
-        self.WriteMovie()
+        pass #self.WriteMovie()
      
     def _UIRender(self, key):
+        #DIVX video encoding in avi container, 25fps, resolution = imagewidth x imageheight
+        fourcc = cv2.cv.CV_FOURCC('D','I','V','X')
+        self._video  = cv2.VideoWriter('output.avi', fourcc, 25, (self.IMAGE_WIDTH, self.IMAGE_HEIGHT));
         if(self.frameCount > 0):
             print "Rendering..."
             xframe = 0
             while xframe != self.frameCount:
-                camdata = self.cameraDataSet[xframe]
-                tempCamPos = camdata[0:3]
-                tempCamRotMat = camdata[4]
-                
-                #get rotation matrix
-                tempCamRotMat = self._imageObj._rotByRotMat(tempCamRotMat, self.ROTATION_INTERVAL, 0, 1, 0, 1)
-                
-                #update current camera rotation degree and matrix
-                self.cameraData[3] = camdata[3]
-                self.cameraData[4] = tempCamRotMat
-                                    
+                tempCamPos1 = self.cameraDataSet[xframe][0:3]
+                tempCamRotMat1 = self.cameraDataSet[xframe][4]
+                #print tempCamPos1, "::", tempCamRotMat1
+                                
                 #get image and display
-                newImage = self._imageObj.getImageFromCam(tempCamPos, tempCamRotMat, self.focal)
+                newImage = self._imageObj.getImageFromCam(tempCamPos1, tempCamRotMat1, 500)
                 newImage = cv2.resize(newImage,(self.IMAGE_WIDTH, self.IMAGE_HEIGHT))
                 self._video.write(newImage)
-        #interpolate all images in frames[]    
-        #call WriteMovie to output avi
-        #possible show the video output
-        #clean up
+            
+                #print xframe, ":",  tempCamRotMat1
+                xframe = xframe + 1
         else:
             print "No frame to render"
+        self._video.release()
+        print "Movie file created"
+    
+    '''def _UIkeyframe(self,key):
+        self.WriteMovie()
          
     def WriteMovie(self,):
         print "Writing Movie..."   
         
-        '''Testing frames'''
         imageDir = os.path.join(".", "video")
         images = list()
         
@@ -328,8 +328,9 @@ class Movie(InputModeHandler):
             if '.jpg' in jpgfiles:
                 frame = cv2.imread(os.path.join(imageDir, jpgfiles)) 
                 frame = cv2.resize(frame,(self.IMAGE_WIDTH, self.IMAGE_HEIGHT))
-                self._video.write(frame)
-                
+                self._video.write(frame)'''
+        
+
     def cleanup(self):
         """
         Cleanup after exiting state
