@@ -40,6 +40,8 @@ Version      Date      Modified By                    Details
                                     plotting Current Frame Camera Translation
                                     and Rotation. Updated Image Class Sypnosis.
                                     Added new Method plotCamTransAndOrient.
+3.4.0     15/11/2014   Toh ZiJing   renamed persProj2 to persProj
+3.5.0     15/11/2014   Toh ZiJing   Cleaned up getImageFromCam functions
 """
 
 #===============

@@ -30,6 +30,8 @@ Version      Date      Modified By                    Details
 2.0.1     04/11/2014   Dave Tan     Removed all Class Attributes and stick to
                                     Instance Attributes.
                                     Cleaned up Method _rotByImage.
+3.5.0     15/11/2014   Toh ZiJing   Updated UI to be able to draw lines in
+                                    addition to creating points
 """
 
 #===============
