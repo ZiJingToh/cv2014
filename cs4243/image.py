@@ -138,28 +138,28 @@ class Image:
     def interpolateImagePoints(self, points):
         t_row, t_col = np.ogrid[0:self._image.shape[0], 0:self._image.shape[1]]
 
+        xCoords = [x[0] for x in points]
+        yCoords = [x[1] for x in points]
+
         xValues = [self.getXAt(*p) for p in points]
         yValues = [self.getYAt(*p) for p in points]
         zValues = [self.getZAt(*p) for p in points]
 
-        interpX = griddata([x[0] for x in points],
-                           [x[1] for x in points],
+        interpX = griddata(xCoords, yCoords,
                            xValues,
                            t_col.tolist()[0],
                            t_row.transpose().tolist()[0],
                            "linear")
         self._image_points[t_row, t_col, 0] = interpX
 
-        interpY = griddata([x[0] for x in points],
-                           [x[1] for x in points],
+        interpY = griddata(xCoords, yCoords,
                            yValues,
                            t_col.tolist()[0],
                            t_row.transpose().tolist()[0],
                            "linear")
         self._image_points[t_row, t_col, 1] = interpY
 
-        interpZ = griddata([x[0] for x in points],
-                           [x[1] for x in points],
+        interpZ = griddata(xCoords, yCoords,
                            zValues,
                            t_col.tolist()[0],
                            t_row.transpose().tolist()[0],
@@ -251,11 +251,11 @@ class Image:
         """
         Drawing using selected points + triangles
         """
-        destination = self.persProj2(self._selectedPoints,
-                                     arrayCamTrans,
-                                     matCamOrient,
-                                     booShowCamTransAndOrient = False,
-                                     int_f = int_f)
+        destination = self.persProj(self._selectedPoints,
+                                    arrayCamTrans,
+                                    matCamOrient,
+                                    booShowCamTransAndOrient = False,
+                                    int_f = int_f)
         destination = np.array(destination).astype(np.float32)
         destination[:,0] += self.getWidth()/2
         destination[:,1] += self.getHeight()/2
@@ -357,30 +357,32 @@ class Image:
         newImagePoints = self._image_points.reshape((self.getHeight()*self.getWidth(), 3))
         newImagePoints = newImagePoints[0:self.getHeight()*self.getWidth():skip]
 
-        uvPoints = self.persProj2(newImagePoints,
-                                  arrayCamTrans,
-                                  matCamOrient,
-                                  booShowCamTransAndOrient = False,
-                                  int_f = int_f).astype(np.float32)
+        uvPoints = self.persProj(newImagePoints,
+                                 arrayCamTrans,
+                                 matCamOrient,
+                                 booShowCamTransAndOrient = False,
+                                 int_f = int_f).astype(np.float32)
         uvPoints[:,0] += self.getWidth()/2
         uvPoints[:,1] += self.getHeight()/2
 
         retImage = np.zeros_like(self._image)
         for index, point in enumerate(uvPoints):
             point = tuple(np.array(point).flatten())
-            color = tuple(newImage[index])
+            color = tuple([int(x) for x in newImage[index]])
             try:
-                cv2.circle(retImage, point, 3, [int(x) for x in color])
+                cv2.circle(retImage, point, 2, color)
             except OverflowError:
-                pass
+                continue
             except ValueError:
-                pass
-        print "image"
+                continue
         return retImage
 
-    def persProj(self, array3DScPts, arrayCamTrans, matCamOrient, int_f = 1,
-                 int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0, int_bv = 1,
-                 int_kv = 1):
+    def persProj(self, array3DScPts, arrayCamTrans, matCamOrient,
+                 booShowCamTransAndOrient = False,
+                 strCamTransFigTitle = "Current Frame Camera Translation",
+                 strCamOrientFigTitle = "Current Frame Camera Orientation",
+                 int_f = 1, int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0,
+                 int_bv = 1, int_kv = 1):
         #===============
         #Initialisation.
         #===============
@@ -388,77 +390,7 @@ class Image:
         i_f = np.transpose(matCamOrient[0, :])
         j_f = np.transpose(matCamOrient[1, :])
         k_f = np.transpose(matCamOrient[2, :])
-        ufp = []
-        vfp = []
         intRows = array3DScPts.shape[0]
-        matProjPts = np.zeros([1, 2])
-
-        #===================================
-        #Compute the Perspective Projection.
-        #===================================
-        for intRowIndex in range(0, intRows, 1):
-            #===============================
-            #Extract Current 3D Coordinates.
-            #===============================
-            listCurrent3DPt = array3DScPts[intRowIndex, :]
-            sp_minus_tf = listCurrent3DPt - arrayCamTrans
-
-            #====
-            #ufp.
-            #====
-            fltNumerator = int_f * np.dot(np.transpose(sp_minus_tf), i_f)
-            fltDenominator = np.dot(np.transpose(sp_minus_tf), k_f)
-            ufp = ((fltNumerator / fltDenominator) if fltDenominator > 0 else 0) * int_bu + int_u0
-            
-            #====
-            #vfp.
-            #====           
-            fltNumerator = int_f * np.dot(np.transpose(sp_minus_tf), j_f)
-            fltDenominator = np.dot(np.transpose(sp_minus_tf), k_f)
-            vfp = ((fltNumerator / fltDenominator) if fltDenominator > 0 else 0) * int_bv + int_v0
-
-            #=============================
-            #Store the Projected 2D Point.
-            #=============================
-            if(intRowIndex == 0):
-                #=========================
-                #First Projected 2D Point.
-                #=========================
-                matProjPts = [ufp, vfp]
-            else:
-                #=========================
-                #Subsequent Rotated Point.
-                #=========================
-                matProjPts = np.append(matProjPts, [ufp, vfp])
-        
-        #==========================
-        #Return the 2D Coordinates.
-        #==========================
-        matProjPts = np.matrix(matProjPts)
-        intRows = matProjPts.shape[0]
-        intColumns = matProjPts.shape[1]
-        intElements = intRows * intColumns
-        intNewRows = int(intElements / 2)
-        matProjPts = np.reshape(matProjPts, (intNewRows, 2))
-        return(matProjPts)
-
-    def persProj2(self, array3DScPts, arrayCamTrans, matCamOrient,
-                  booShowCamTransAndOrient = False,
-                  strCamTransFigTitle = "Current Frame Camera Translation",
-                  strCamOrientFigTitle = "Current Frame Camera Orientation",
-                  int_f = 1, int_u0 = 0, int_bu = 1, int_ku = 1, int_v0 = 0,
-                  int_bv = 1, int_kv = 1):
-        #===============
-        #Initialisation.
-        #===============
-        import numpy as np
-        i_f = np.transpose(matCamOrient[0, :])
-        j_f = np.transpose(matCamOrient[1, :])
-        k_f = np.transpose(matCamOrient[2, :])
-        ufp = []
-        vfp = []
-        intRows = array3DScPts.shape[0]
-        matProjPts = []
 
         #=============================
         #Compute the (sp - tf) Matrix.
@@ -479,26 +411,7 @@ class Image:
         fltDenominator = np.dot(sp_minus_tf, k_f)
         vfp = fltNumerator / fltDenominator
 
-        """
-        for intRowIndex, listRow in enumerate(zip(ufp, vfp)):
-            listTemp = np.array(listRow)
-            u, v = listTemp.ravel()
-            
-            #=============================
-            #Store the Projected 2D Point.
-            #=============================
-            if(intRowIndex == 0):
-                #=========================
-                #First Projected 2D Point.
-                #=========================
-                matProjPts = [u, v]
-            else:
-                #=========================
-                #Subsequent Rotated Point.
-                #=========================
-                matProjPts = np.append([matProjPts], [u, v])
-        """
-        matProjPts = np.array(zip(ufp, vfp))
+        matProjPts = np.dstack((ufp, vfp))
 
         #==========================================================
         #Plot the Current Frame Camera Translation and Orientation.
