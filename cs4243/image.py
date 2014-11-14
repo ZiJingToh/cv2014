@@ -287,7 +287,6 @@ class Image:
         destination[:,1] += self.getHeight()/2
 
         #check for grids to prune
-        mask = np.zeros(self._image.shape, dtype=np.uint8)
         finalMask = np.zeros(self._image.shape, dtype=np.uint8)
         if doWireframe:
             wireframe = np.zeros(self._image.shape, dtype=np.uint8)
@@ -319,9 +318,6 @@ class Image:
 
             [indices_p.add(p) for p in grid]
             grids_p.append(grid)
-            cv2.fillPoly(mask,
-                         np.array([np.array([self._selected2DPoints[p] for p in grid]).astype(np.int)]),
-                         (255, 255, 255))
             cv2.fillPoly(finalMask,
                          np.array([np.array([destination[p] for p in grid]).astype(np.int)]),
                          (255, 255, 255))
@@ -352,12 +348,12 @@ class Image:
         # remap/warp image
         t_row, t_col = np.ogrid[0:self.getHeight(), 0:self.getWidth()]
         interp_x = griddata(destination_p[:,0], destination_p[:,1], selected2DPoints_p[:,0],
-                            t_col.tolist()[0], t_row.transpose().tolist()[0],
+                            t_col.ravel(), t_row.ravel(),
                             "linear")
         interp_y = griddata(destination_p[:,0], destination_p[:,1], selected2DPoints_p[:,1],
-                            t_col.tolist()[0], t_row.transpose().tolist()[0],
+                            t_col.ravel(), t_row.transpose().ravel(),
                             "linear")
-        warped = cv2.remap(cv2.bitwise_and(self._image, mask),
+        warped = cv2.remap(self._image,
                            interp_x.astype(np.float32),
                            interp_y.astype(np.float32),
                            cv2.INTER_LINEAR,
