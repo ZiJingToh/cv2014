@@ -135,9 +135,10 @@ class Image:
         self._image_points[t_row, t_col, 1] = t_row
         self._image_points[t_row, t_col, 2] = 0
 
-    def interpolateImagePoints(self, points):
+    def interpolateImagePoints(self, points, edges):
         t_row, t_col = np.ogrid[0:self._image.shape[0], 0:self._image.shape[1]]
 
+        # get values for 
         xCoords = [x[0] for x in points]
         yCoords = [x[1] for x in points]
 
@@ -145,24 +146,49 @@ class Image:
         yValues = [self.getYAt(*p) for p in points]
         zValues = [self.getZAt(*p) for p in points]
 
-        interpX = griddata(xCoords, yCoords,
-                           xValues,
-                           t_col.tolist()[0],
-                           t_row.transpose().tolist()[0],
+        # get edge points
+        edgeIndices = [(points.index(e[0]),
+                        points.index(e[1])) for e in edges]
+        for p1, p2 in edgeIndices:
+            p1v = np.array(points[p1])
+            p2v = np.array(points[p2])
+            mag = p2v-p1v
+            mag = int(np.sqrt(mag.dot(mag)))
+
+            interpU = np.interp(range(mag),
+                                [0, mag-1],
+                                [p1v[0], p2v[0]]).astype(np.int).tolist()
+            interpV = np.interp(range(mag),
+                                [0, mag-1],
+                                [p1v[1], p2v[1]]).astype(np.int).tolist()
+            interpX = np.interp(range(mag),
+                                [0, mag-1],
+                                [xValues[p1], xValues[p2]]).tolist()
+            interpY = np.interp(range(mag),
+                                [0, mag-1],
+                                [yValues[p1], yValues[p2]]).tolist()
+            interpZ = np.interp(range(mag),
+                                [0, mag-1],
+                                [zValues[p1], zValues[p2]]).tolist()
+            xCoords.extend(interpU)
+            yCoords.extend(interpV)
+            xValues.extend(interpX)
+            yValues.extend(interpY)
+            zValues.extend(interpZ)
+
+        # interpolate points
+        interpX = griddata(xCoords, yCoords, xValues,
+                           t_col.ravel(), t_row.ravel(),
                            "linear")
         self._image_points[t_row, t_col, 0] = interpX
 
-        interpY = griddata(xCoords, yCoords,
-                           yValues,
-                           t_col.tolist()[0],
-                           t_row.transpose().tolist()[0],
+        interpY = griddata(xCoords, yCoords, yValues,
+                           t_col.ravel(), t_row.ravel(),
                            "linear")
         self._image_points[t_row, t_col, 1] = interpY
 
-        interpZ = griddata(xCoords, yCoords,
-                           zValues,
-                           t_col.tolist()[0],
-                           t_row.transpose().tolist()[0],
+        interpZ = griddata(xCoords, yCoords, zValues,
+                           t_col.ravel(), t_row.ravel(),
                            "linear")
         self._image_points[t_row, t_col, 2] = interpZ
 
@@ -225,11 +251,11 @@ class Image:
 
     def gridimage(self, points):
         # setup grid
-        xwidth = 51
+        xwidth = 60
         ywidth = int(xwidth*(float(self.getHeight())/self.getWidth()))
         x, y = np.meshgrid(range(xwidth),range(ywidth))
-        x = ((self.getWidth()-1)/(xwidth-1)) * x.flatten()
-        y = ((self.getHeight()-1)/(ywidth-1)) * y.flatten()
+        x = ((self.getWidth()-1)/(xwidth-1)) * x.ravel()
+        y = ((self.getHeight()-1)/(ywidth-1)) * y.ravel()
         gridPoints = np.array(zip(x, y)).astype(np.float32)
 
         # compute individual grid points
@@ -247,7 +273,7 @@ class Image:
                                  self.getZAt(*p),) for p in self._selected2DPoints]
         self._selectedPoints = np.array(self._selectedPoints).astype(np.float32)
 
-    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f, doWireframe=True):
+    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f, doWireframe=False):
         """
         Drawing using selected points + triangles
         """
@@ -263,7 +289,10 @@ class Image:
         #check for grids to prune
         mask = np.zeros(self._image.shape, dtype=np.uint8)
         finalMask = np.zeros(self._image.shape, dtype=np.uint8)
-        wireframe = np.zeros(self._image.shape, dtype=np.uint8)
+        if doWireframe:
+            wireframe = np.zeros(self._image.shape, dtype=np.uint8)
+        else:
+            wireframe = None
         indices_p = set()
         grids_p = []
 
@@ -297,32 +326,24 @@ class Image:
                          np.array([np.array([destination[p] for p in grid]).astype(np.int)]),
                          (255, 255, 255))
 
-            # draw wireframe
-            cv2.line(wireframe,
-                     tuple(destination[grid[0]]),
-                     tuple(destination[grid[1]]),
-                     (0,255,0))
-            cv2.line(wireframe,
-                     tuple(destination[grid[1]]),
-                     tuple(destination[grid[2]]),
-                     (0,255,0))
-            cv2.line(wireframe,
-                     tuple(destination[grid[2]]),
-                     tuple(destination[grid[3]]),
-                     (0,255,0))
-            cv2.line(wireframe,
-                     tuple(destination[grid[3]]),
-                     tuple(destination[grid[0]]),
-                     (0,255,0))
-
-            """
-            cv2.imshow("TEST", cv2.resize(wireframe, (0,0), fx=0.2, fy=0.2))
-            cv2.imshow("TEST2", cv2.resize(cv2.bitwise_and(self._image, mask), (0,0), fx=0.2, fy=0.2))
-            print grid
-            print [self._selected2DPoints[x] for x in grid]
-            print [destination[x] for x in grid]
-            cv2.waitKey(0)
-            """
+            if doWireframe:
+                # draw wireframe
+                cv2.line(wireframe,
+                         tuple(destination[grid[0]]),
+                         tuple(destination[grid[1]]),
+                         (0,200,0))
+                cv2.line(wireframe,
+                         tuple(destination[grid[1]]),
+                         tuple(destination[grid[2]]),
+                         (0,200,0))
+                cv2.line(wireframe,
+                         tuple(destination[grid[2]]),
+                         tuple(destination[grid[3]]),
+                         (0,200,0))
+                cv2.line(wireframe,
+                         tuple(destination[grid[3]]),
+                         tuple(destination[grid[0]]),
+                         (0,200,0))
 
         indices_p = sorted(list(indices_p))
         destination_p = np.array([destination[x] for x in indices_p])
@@ -351,7 +372,7 @@ class Image:
         """
         Drawing using all points
         """
-        skip = 75
+        skip = 50
         newImage = self._image.reshape((self.getHeight()*self.getWidth(), 3))
         newImage = newImage[0:self.getHeight()*self.getWidth():skip]
         newImagePoints = self._image_points.reshape((self.getHeight()*self.getWidth(), 3))
@@ -367,7 +388,7 @@ class Image:
 
         retImage = np.zeros_like(self._image)
         for index, point in enumerate(uvPoints):
-            point = tuple(np.array(point).flatten())
+            point = tuple(np.array(point).ravel())
             color = tuple([int(x) for x in newImage[index]])
             try:
                 cv2.circle(retImage, point, 2, color)

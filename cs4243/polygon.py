@@ -104,12 +104,13 @@ class Polygon(InputModeHandler):
         super(Polygon, self).__init__()
         self._window = window
         self._imageObj = imageObj
-        self._view = self._imageObj.getView()
 
         self._modeName = "Polygon"
         self._coordMode = "Z" # X, Y or Z
 
         # set to store clicked points
+        self._last2SelectedPoints = []
+        self._edges = set()
         self._points = []
         self._selectedPoint = None
         self._valueStr = ""
@@ -136,6 +137,8 @@ class Polygon(InputModeHandler):
                                 "w":self._UIsetCoordMode,
                                 "e":self._UIsetCoordMode,
                                 chr(13):self._UIenterValue, # enter key
+                                "p":self._setEdge,
+                                "o":self._disconnectEdges,
                                 "c":self._clearSetPoints,
                                 ",":self._selectPrevPoint,
                                 ".":self._selectNextPoint,
@@ -151,11 +154,28 @@ class Polygon(InputModeHandler):
             self._coordMode = "Z"
         print "Coord Mode: ", self._coordMode
 
+    def _setEdge(self, key):
+        if len(self._last2SelectedPoints) != 2:
+            return
+        self._edges.add(tuple(sorted(self._last2SelectedPoints)))
+        self._last2SelectedPoints = []
+        self._imageObj.interpolateImagePoints(self._points, self._edges)
+        self._redrawView()
+
+    def _disconnectEdges(self, key):
+        for e in list(self._edges):
+            if self._selectedPoint in e:
+                self._edges.remove(e)
+        self._imageObj.interpolateImagePoints(self._points, self._edges)
+        self._redrawView()
+
     def _clearSetPoints(self, key=None):
         """
         Clears point set, creates initial 4 corner points
         """
         self._selectedPoint = None
+        self._edges = set()
+        self._last2SelectedPoints = []
         self._points = []
         self._points.append((0,0,))
         self._points.append((self._imageObj.getWidth()-1,0,))
@@ -175,6 +195,9 @@ class Polygon(InputModeHandler):
         if selected:
             if selected != self._selectedPoint:
                 self._valueStr = ""
+                self._last2SelectedPoints.append(selected)
+                if len(self._last2SelectedPoints) > 2:
+                    self._last2SelectedPoints = self._last2SelectedPoints[-2:len(self._last2SelectedPoints)]
             self._selectedPoint = selected
             print "=" * 80
             print "Selected point: ", self._selectedPoint
@@ -189,8 +212,16 @@ class Polygon(InputModeHandler):
     def _UIdeletePoint(self, key):
         if (len(self._points) > 4 and self._selectedPoint and
             not self._selectedPoint in self._points[:4]):
-            if self._points.remove(self._selectedPoint):
-                self._imageObj.setZAt([0,0,0], *self._selectedPoint)
+            print self._selectedPoint
+            if self._selectedPoint in self._points:
+                self._points.remove(self._selectedPoint)
+
+                for e in list(self._edges):
+                    if self._selectedPoint in e:
+                        self._edges.remove(e)
+
+                self._imageObj.interpolateImagePoints(self._points, self._edges)
+                self._last2SelectedPoints = []
                 self._selectedPoint = None
             self._redrawView()
 
@@ -213,7 +244,7 @@ class Polygon(InputModeHandler):
                 elif self._coordMode == "Z":
                     self._imageObj.setZAt(int(self._valueStr), *self._selectedPoint)
                 self._valueStr = ""
-                self._imageObj.interpolateImagePoints(self._points)
+                self._imageObj.interpolateImagePoints(self._points, self._edges)
                 self._redrawView()
 
     def _hasPoint(self, x, y):
@@ -256,30 +287,43 @@ class Polygon(InputModeHandler):
             self._UImouseClickPoint(0, 0)
         
     def _redrawView(self):
-        self._view = self._imageObj.getView()
+        view = self._imageObj.getView()
+        # draw edges
+        for e in self._edges:
+            cv2.line(view,
+                     self._imageObj.convertToViewSpace(*e[0]),
+                     self._imageObj.convertToViewSpace(*e[1]),
+                     (0,255,255),
+                     2)
+        # draw points
         for point in self._points:
             cpoint = self._imageObj.convertToViewSpace(*point)
             if point == self._selectedPoint:
-                cv2.circle(self._view, cpoint, 5, (0,0,255,), 8)
-                cv2.circle(self._view, cpoint, 5, (0,255,0,), 2)
+                cv2.circle(view, cpoint, 5, (0,0,255,), 8)
+                cv2.circle(view, cpoint, 5, (0,255,0,), 2)
             else:
-                cv2.circle(self._view, cpoint, 5, (0,0,255,), 2)
-        self._window.display(self._view)
+                cv2.circle(view, cpoint, 5, (0,0,255,), 2)
+        # display to window
+        self._window.display(view)
 
     def _savePoints(self, key):
+        print "Saving Points...."
         pointsStr = str(self._points)
+        edgesStr = str(self._edges)
         xStr = str([self._imageObj.getXAt(*p) for p in self._points])
         yStr = str([self._imageObj.getYAt(*p) for p in self._points])
         zStr = str([self._imageObj.getZAt(*p) for p in self._points])
 
         fd = open(SAVE_FILE, "w+")
         fd.writelines([pointsStr, "\n",
+                       edgesStr, "\n",
                        xStr, "\n",
                        yStr, "\n",
                        zStr, "\n"])
         fd.close()
 
     def _loadPoints(self, key):
+        print "Loading Points..."
         if not os.path.exists:
             return
 
@@ -290,16 +334,17 @@ class Polygon(InputModeHandler):
         fd.close()
 
         self._points = eval(lines[0])
-        xValues = eval(lines[1])
-        yValues = eval(lines[2])
-        zValues = eval(lines[3])
+        self._edges = eval(lines[1])
+        xValues = eval(lines[2])
+        yValues = eval(lines[3])
+        zValues = eval(lines[4])
 
         for index, point in enumerate(self._points):
             self._imageObj.setXAt(xValues[index], *point)
             self._imageObj.setYAt(yValues[index], *point)
             self._imageObj.setZAt(zValues[index], *point)
 
-        self._imageObj.interpolateImagePoints(self._points)
+        self._imageObj.interpolateImagePoints(self._points, self._edges)
 
         self._redrawView()
 
