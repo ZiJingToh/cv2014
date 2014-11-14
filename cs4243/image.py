@@ -411,7 +411,7 @@ class Image:
         fltDenominator = np.dot(sp_minus_tf, k_f)
         vfp = fltNumerator / fltDenominator
 
-        matProjPts = np.dstack((ufp, vfp))
+        matProjPts = np.array(zip(ufp, vfp))
 
         #==========================================================
         #Plot the Current Frame Camera Translation and Orientation.
