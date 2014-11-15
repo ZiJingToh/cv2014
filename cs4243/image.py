@@ -42,6 +42,7 @@ Version      Date      Modified By                    Details
                                     Added new Method plotCamTransAndOrient.
 3.4.0     15/11/2014   Toh ZiJing   renamed persProj2 to persProj
 3.5.0     15/11/2014   Toh ZiJing   Cleaned up getImageFromCam functions
+4.0.0     16/11/2014   Toh ZiJing   Added image display mode toggle
 """
 
 #===============
@@ -95,7 +96,8 @@ class Image:
     #============================
     #Reserved for Global Class Attributes, if any. Instance Attributes are
     #initialised in __init__ Constructor Method.
-
+    IMAGE_MODES = ["normal", "wireframe", "points"]
+    
     #========
     #Methods.
     #========
@@ -110,6 +112,7 @@ class Image:
 
         self._view = self._image[:]
         self._view_scale = 0.65
+        self._imageMode = 0
 
         #Stores x,y,z world coords for each point.
         self._image_points = np.zeros_like(self._image, np.int)
@@ -129,6 +132,11 @@ class Image:
         self._grids = None
         self._selected2DPoints = []
         self._selectedPoints = []
+
+    def toggleImageMode(self):
+        self._imageMode += 1
+        self._imageMode %= len(self.IMAGE_MODES)
+        print "Display mode: ", self.IMAGE_MODES[self._imageMode]
 
     def resetImagePoints(self):
         # stores x,y,z world coords for each point
@@ -275,7 +283,18 @@ class Image:
                                  self.getZAt(*p),) for p in self._selected2DPoints]
         self._selectedPoints = np.array(self._selectedPoints).astype(np.float32)
 
-    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f, doWireframe=False):
+    def getImageFromCam(self, arrayCamTrans, matCamOrient, int_f):
+        if self.IMAGE_MODES[self._imageMode] == "normal":
+            return self.getImageFromCamRemap(arrayCamTrans, matCamOrient, int_f,
+                                             doWireframe=False)
+        if self.IMAGE_MODES[self._imageMode] == "wireframe":
+            return self.getImageFromCamRemap(arrayCamTrans, matCamOrient, int_f,
+                                             doWireframe=True)
+        if self.IMAGE_MODES[self._imageMode] == "points":
+            return self.getImageFromCamPoints(arrayCamTrans, matCamOrient, int_f)
+        return None
+
+    def getImageFromCamRemap(self, arrayCamTrans, matCamOrient, int_f, doWireframe=False):
         """
         Drawing using selected points + triangles
         """

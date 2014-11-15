@@ -12,6 +12,7 @@ Group Members: Dave Tan Woo Hong (A0106505R)
 Version      Date      Modified By                    Details
 =======   ==========   ===========  ============================================
 1.0.0     01/11/2014   ???          Added new Class Movie.
+4.0.0     16/11/2014   Toh ZiJing   Added image display mode toggle
 """
 
 #===============
@@ -49,7 +50,8 @@ class Movie(InputModeHandler):
                                 chr(13):self.UIEnterCameraMovement,    	#enter key
                                 "c":self.ClearSetPoints,               	#clear all camera position
                                 "l":self.UILoadCameraData,             	#load predefined camera positions
-								"o":self.Render}					#render
+                                "o":self.Render,			#render
+                                "p":self.toggleImageMode}
 
 
         #global constant
@@ -99,7 +101,14 @@ class Movie(InputModeHandler):
         self._window.display(self._imageObj.getResizedImage(newImage))
         
         print "Current point: ({} {} {} {})".format(self.cameraData[0],self.cameraData[1],self.cameraData[2],self.cameraData[3])
-        
+
+    def toggleImageMode(self, key):
+        self._imageObj.toggleImageMode()
+        newImage = self._imageObj.getImageFromCam(self.cameraData[0:3],
+                                                  self.cameraData[4],
+                                                  self.FOCAL)
+        self._window.display(self._imageObj.getResizedImage(newImage))   
+
     def ClearSetPoints(self, key=None):
         print "In ClearSetPoints"
 
