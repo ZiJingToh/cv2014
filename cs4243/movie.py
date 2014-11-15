@@ -12,7 +12,11 @@ Group Members: Dave Tan Woo Hong (A0106505R)
 Version      Date      Modified By                    Details
 =======   ==========   ===========  ============================================
 1.0.0     01/11/2014   ???          Added new Class Movie.
-4.0.0     16/11/2014   Toh ZiJing   Added image display mode toggle
+4.0.0     15/11/2014   Toh ZiJing   Added image display mode toggle.
+4.1.0     15/11/2014   Dave Tan     Added new Method plotCFCamPosAndOrient.
+                                    Invoked plotCFCamPosAndOrient Method to plot
+                                    both Camera Location and Camera Orientation
+                                    when the ENTER Key, i.e Chr(13) is pressed.
 """
 
 #===============
@@ -486,6 +490,9 @@ class Movie(InputModeHandler):
             
                 print "Camera data saved"
                 print "Current point: ({} {} {} {})".format(self.cameraData[0],self.cameraData[1],self.cameraData[2],self.cameraData[3])
+
+            #Plot the Current Frame's Camera Location and Orientation.
+            self.plotCFCamPosAndOrient(self.cameraData[0:3], self.cameraData[4])
                   
     def UILoadCameraData(self, key=None):
         print "In UILoadCameraData"  
@@ -579,7 +586,29 @@ class Movie(InputModeHandler):
         
         else:
             return [frameCountR,False]
-                
+
+    def plotCFCamPosAndOrient(self, arrayCFCamTrans, arrayCFCamOrient):
+        #Initialisation.
+        intxMin = -2000
+        intxMax = 2000
+        intyMin = -2000
+        intyMax = 2000
+        intzMin = -1000
+        intzMax = 1000
+        strCamTransFigTitle = "Current Captured Frame's\n" + "Camera Location" \
+                              + " at Point: (" + str(arrayCFCamTrans[0]) \
+                              + ", " + str(arrayCFCamTrans[1]) + ", " \
+                              + str(arrayCFCamTrans[2]) + ")"
+        strCamOrientFigTitle = "Current Captured Frame's Camera Orientation"
+
+        #Plot the Current Frame's Camera Position and Orientation.
+        self._imageObj.plotCamTransAndOrient(arrayCFCamTrans,
+                                             strCamTransFigTitle,
+                                             arrayCFCamOrient,
+                                             strCamOrientFigTitle, intxMin,
+                                             intxMax, intyMin, intyMax, intzMin,
+                                             intzMax)
+
     def cleanup(self):
         """
         Cleanup after exiting state

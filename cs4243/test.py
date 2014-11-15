@@ -35,6 +35,19 @@ Version      Date      Modified By                    Details
                                     dispSmallTestSetPoints, performSelectedTest,
                                     cleanup.
 1.1.0     09/11/2014   Dave Tan     Updated Test Class Sypnosis.
+4.1.0     15/11/2014   Dave Tan     Changed Method Invocation for the following
+                                    Methods due to their move to Image Class:
+                                    _rotByQuatMult, _rotByRotMat in
+                                    performTestScenario1 Method; _rotByImage,
+                                    _rotByQuatMult and _rotByRotMat in
+                                    performTestScenario2 Method. Changed Method
+                                    Invocation from persProj2 to persProj due to
+                                    rename of persProj2 back to persProj in
+                                    Image Class in both performTestScenario1 and
+                                    performTestScenario2 Methods. Added Boolean
+                                    Argument in dispCamTrans Invocation in
+                                    performTestScenario1 Method to annotate on
+                                    each Frame Basis.
 """
 
 #===============
@@ -449,7 +462,7 @@ class Test():
         print("====================")
 
         #Compute Camera Locations.
-        self._matRotatedPoints = self.poly._rotByQuatMult(self._arrayCamPos1,
+        self._matRotatedPoints = self.img._rotByQuatMult(self._arrayCamPos1,
                                                      self._fltTheta,
                                                      self._wx, self._wy,
                                                      self._wz,
@@ -482,7 +495,8 @@ class Test():
             #============================
             #Display Camera Translations.
             #============================
-            self.img.dispCamTrans(self._matRotatedPoints, self._strFigureTitle)
+            self.img.dispCamTrans(self._matRotatedPoints, self._strFigureTitle,
+                                  booAnnotateCFOnly = False)
             print("\n")
 
         #=======================
@@ -493,13 +507,13 @@ class Test():
         print("=======================")
 
         #Compute Camera Orientations.
-        self._matCamOrient2 = self.poly._rotByRotMat(self._matCamOrient1,
+        self._matCamOrient2 = self.img._rotByRotMat(self._matCamOrient1,
                                                 self._fltTheta,
                                                 self._wx, self._wy, self._wz, 1)
-        self._matCamOrient3 = self.poly._rotByRotMat(self._matCamOrient2,
+        self._matCamOrient3 = self.img._rotByRotMat(self._matCamOrient2,
                                                 self._fltTheta,
                                                 self._wx, self._wy, self._wz, 1)
-        self._matCamOrient4 = self.poly._rotByRotMat(self._matCamOrient3,
+        self._matCamOrient4 = self.img._rotByRotMat(self._matCamOrient3,
                                                 self._fltTheta,
                                                 self._wx, self._wy, self._wz, 1)
 
@@ -540,16 +554,16 @@ class Test():
         print("d. Plot the Images for the Perspective Projection for the 4 \n")
         print("Frames.")
         print("===================================================================")
-        self._arrayFr1PersProj = self.img.persProj2(self._mat3DScene,
+        self._arrayFr1PersProj = self.img.persProj(self._mat3DScene,
                                                    self._arrayCamPos1,
                                                    self._matCamOrient1)
-        self._arrayFr2PersProj = self.img.persProj2(self._mat3DScene,
+        self._arrayFr2PersProj = self.img.persProj(self._mat3DScene,
                                               self._arrayCamPos2,
                                               self._matCamOrient2)
-        self._arrayFr3PersProj = self.img.persProj2(self._mat3DScene,
+        self._arrayFr3PersProj = self.img.persProj(self._mat3DScene,
                                               self._arrayCamPos3,
                                               self._matCamOrient3)
-        self._arrayFr4PersProj = self.img.persProj2(self._mat3DScene,
+        self._arrayFr4PersProj = self.img.persProj(self._mat3DScene,
                                               self._arrayCamPos4,
                                               self._matCamOrient4)
 
@@ -611,7 +625,7 @@ class Test():
         print self.img._flat_3dpoints
         print "\n"
 
-        self.img._flat_3dpoints_new = self.poly._rotByImage(self.img,
+        self.img._flat_3dpoints_new = self.img._rotByImage(self.img,
                                                             self._fltTheta,
                                                             self._wx,
                                                             self._wy, self._wz)
@@ -674,46 +688,46 @@ class Test():
         print("===========================")
 
         #Test First Frame of Perspective Projection.
-        self._arrayFr1PersProj = self.img.persProj2(self.img._flat_3dpoints,
+        self._arrayFr1PersProj = self.img.persProj(self.img._flat_3dpoints,
                                                    self._arrayCamPos1,
                                                    self._matCamOrient1)
 
         #Test Second Frame of Perspective Projection.
-        self._arrayCamPos2 = self.poly._rotByQuatMult(self._arrayCamPos1,
+        self._arrayCamPos2 = self.img._rotByQuatMult(self._arrayCamPos1,
                                                       self._fltTheta,
                                                       self._wx, self._wy,
                                                       self._wz, 1)
-        self._matCamOrient2 = self.poly._rotByRotMat(self._matCamOrient1,
+        self._matCamOrient2 = self.img._rotByRotMat(self._matCamOrient1,
                                                      self._fltTheta,
                                                      self._wx, self._wy,
                                                      self._wz, 1)
-        self._arrayFr2PersProj = self.img.persProj2(self.img._flat_3dpoints,
+        self._arrayFr2PersProj = self.img.persProj(self.img._flat_3dpoints,
                                                    self._arrayCamPos2,
                                                    self._matCamOrient2)
 
         #Test Third Frame of Perspective Projection.
-        self._arrayCamPos3 = self.poly._rotByQuatMult(self._arrayCamPos2,
+        self._arrayCamPos3 = self.img._rotByQuatMult(self._arrayCamPos2,
                                                       self._fltTheta,
                                                       self._wx, self._wy,
                                                       self._wz, 1)
-        self._matCamOrient3 = self.poly._rotByRotMat(self._matCamOrient2,
+        self._matCamOrient3 = self.img._rotByRotMat(self._matCamOrient2,
                                                      self._fltTheta,
                                                      self._wx, self._wy,
                                                      self._wz, 1)
-        self._arrayFr3PersProj = self.img.persProj2(self.img._flat_3dpoints,
+        self._arrayFr3PersProj = self.img.persProj(self.img._flat_3dpoints,
                                                    self._arrayCamPos3,
                                                    self._matCamOrient3)
 
         #Test Fourth Frame of Perspective Projection.
-        self._arrayCamPos4 = self.poly._rotByQuatMult(self._arrayCamPos3,
+        self._arrayCamPos4 = self.img._rotByQuatMult(self._arrayCamPos3,
                                                       self._fltTheta,
                                                       self._wx, self._wy,
                                                       self._wz, 1)
-        self._matCamOrient4 = self.poly._rotByRotMat(self._matCamOrient3,
+        self._matCamOrient4 = self.img._rotByRotMat(self._matCamOrient3,
                                                      self._fltTheta,
                                                      self._wx, self._wy,
                                                      self._wz, 1)
-        self._arrayFr4PersProj = self.img.persProj2(self.img._flat_3dpoints,
+        self._arrayFr4PersProj = self.img.persProj(self.img._flat_3dpoints,
                                                    self._arrayCamPos4,
                                                    self._matCamOrient4)
 

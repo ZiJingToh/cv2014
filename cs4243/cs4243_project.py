@@ -26,6 +26,7 @@ Version      Date      Modified By                    Details
 2.0.0     07/11/2014   Dave Tan     Moved all codes into a new Test Class and
                                     converted all Functions to Test Class
                                     Methods.
+4.1.0     15/11/2014   Dave Tan     Test based on v4.1.0 Baseline.
 """
 
 #==================
@@ -35,7 +36,7 @@ print("==================")
 print("a. Initialisation.")
 print("==================")
 from test import Test
-strWorkingDirectory = "F:\Python\CS4243\Project\CS4243_V3.0.0_Baseline_Dave\cs4243"
+strWorkingDirectory = "F:\Python\CS4243\Project\CS4243_V4.1.0_Baseline\cs4243"
 strImageFileName = "project.jpeg"
 test = Test(strWorkingDirectory, "..\\" + strImageFileName)
 print("\n")
@@ -54,7 +55,7 @@ print("\n")
 print("==================================")
 print("a. Perform selected Test Scenario.")
 print("==================================")
-test.turnOffAllDisplayOptions()
+test.turnOnAllDisplayOptions()
 test.performSelectedTest(1)
 
 

@@ -40,9 +40,21 @@ Version      Date      Modified By                    Details
                                     plotting Current Frame Camera Translation
                                     and Rotation. Updated Image Class Sypnosis.
                                     Added new Method plotCamTransAndOrient.
-3.4.0     15/11/2014   Toh ZiJing   renamed persProj2 to persProj
-3.5.0     15/11/2014   Toh ZiJing   Cleaned up getImageFromCam functions
-4.0.0     16/11/2014   Toh ZiJing   Added image display mode toggle
+3.4.0     15/11/2014   Toh ZiJing   renamed persProj2 to persProj.
+3.5.0     15/11/2014   Toh ZiJing   Cleaned up getImageFromCam functions.
+4.0.0     15/11/2014   Toh ZiJing   Added image display mode toggle.
+4.1.0     15/11/2014   Dave Tan     Modified plotCamTransAndOrient Method to
+                                    take in Arguments for specifying Axis Range
+                                    for X-Axis, Y-Axis and Z-Axis when calling
+                                    dispCamTrans by providing such Axis Ranges.
+                                    No change to Axes when calling
+                                    dispCamOrient. Modified dispCamTrans Method
+                                    to include one more Boolean Parameter
+                                    booAnnotateCFOnly to indicate whether to
+                                    annotate on a Current Frame Basis or
+                                    annotate each Frame Basis as well as to swap
+                                    the Cartesian Y and Z Axes due to the use of
+                                    World Coordinate System. Added Debug Option.
 """
 
 #===============
@@ -52,6 +64,13 @@ import platform
 from matplotlib.mlab import griddata
 import numpy as np
 import cv2
+import warnings
+booDebug = False
+if(not(booDebug)):
+    #===============
+    #Non-Debug Mode.
+    #===============
+    warnings.filterwarnings("ignore")
 
 class Image:
     """
@@ -503,11 +522,14 @@ class Image:
         plt.show()
 
     def plotCamTransAndOrient(self, arrayCFCamTrans, strCamTransFigTitle,
-                              arrayCFCamOrient, strCamOrientFigTitle):
+                              arrayCFCamOrient, strCamOrientFigTitle,
+                              intxMin = -5, intxMax = 5, intyMin = -5,
+                              intyMax = 5, intzMin = -5, intzMax = 5):
         #========================
         #Camera Translation Plot.
         #========================
-        self.dispCamTrans(arrayCFCamTrans, strCamTransFigTitle)
+        self.dispCamTrans(arrayCFCamTrans, strCamTransFigTitle, intxMin,
+                          intxMax, intyMin, intyMax, intzMin, intzMax)
 
         #========================
         #Camera Orientation Plot.
@@ -546,7 +568,7 @@ class Image:
 
     def dispCamTrans(self, mat1stPlusRotatedPoints, strFigureTitle,
                      intxMin = -5, intxMax = 5, intyMin = -5, intyMax = 5,
-                     intzMin = -5, intzMax = 5):
+                     intzMin = -5, intzMax = 5, booAnnotateCFOnly = True):
         def reprojectlabels(event):
             #==============================================================
             #Transform 3D Co-Ordinates to get new 2D Projection onto the XZ
@@ -602,8 +624,8 @@ class Image:
         axCurrent.set_ylabel('z')
         axCurrent.set_zlabel('y')
         axCurrent.set_xlim(intxMin, intxMax)
-        axCurrent.set_ylim(intyMin, intyMax)
-        axCurrent.set_zlim(intzMin, intzMax)
+        axCurrent.set_ylim(intzMin, intzMax)
+        axCurrent.set_zlim(intyMin, intyMax)
         axCurrent.invert_xaxis()
         axCurrent.invert_yaxis()
         axCurrent.invert_zaxis()
@@ -664,9 +686,21 @@ class Image:
             #======================================
             #Build the Label for the Current Point.
             #======================================
-            strAnnotation = 'Camera Position at Frame: ' + str(i + 1) + ' [' \
-                            + str(int(listX[i])) + ',' + str(int(listY[i])) \
-                            + ',' + str(int(listZ[i]))+']'
+            if(booAnnotateCFOnly):
+                #==============================
+                #Current Frame Annotation only.
+                #==============================
+                strAnnotation = 'Camera Position at Current Frame: ' + ' [' + \
+                                str(int(listX[i])) + ',' + str(int(listY[i])) \
+                                + ',' + str(int(listZ[i])) + ']'
+            else:
+                #========================
+                #Frame Number Annotation.
+                #========================
+                strAnnotation = 'Camera Position at Frame: ' + str(i + 1) + \
+                                ' [' + str(int(listX[i])) + ',' + \
+                                str(int(listY[i])) + ',' + str(int(listZ[i])) \
+                                + ']'
 
             labelCurrent = \
                          axCurrent.annotate(strAnnotation, xycoords='data',
@@ -837,7 +871,6 @@ class Image:
         #Display the Camera Orientation.
         #===============================
         pltCurrent.show()
-
         
     def _normalise(self, listInput):
         #===============
@@ -1135,6 +1168,3 @@ class Image:
         #Return the Rotated Points.
         #==========================
         return(np.transpose(listRotated3DScene))
-
-
-    

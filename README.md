@@ -24,6 +24,7 @@ In this mode a perspective projection of the points will be shown. The user can 
 
 Keys:
  - w,s,a,d              : move camera forward, back, left, right respectively
+ - r,f                  : move camera up and down
  - q,r                  : rotate camera left, right respectively
  - enter                : save position as a keyframe
  - o                    : save out movie from keyframes
