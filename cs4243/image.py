@@ -65,6 +65,7 @@ from matplotlib.mlab import griddata
 import numpy as np
 import cv2
 import warnings
+
 booDebug = False
 if(not(booDebug)):
     #===============
@@ -151,6 +152,9 @@ class Image:
         self._grids = None
         self._selected2DPoints = []
         self._selectedPoints = []
+
+        self.figCurrent = None
+        self.figCurrentOrient = None
 
     def toggleImageMode(self):
         self._imageMode += 1
@@ -525,6 +529,9 @@ class Image:
                               arrayCFCamOrient, strCamOrientFigTitle,
                               intxMin = -5, intxMax = 5, intyMin = -5,
                               intyMax = 5, intzMin = -5, intzMax = 5):
+        import matplotlib
+        matplotlib.interactive(True)
+
         #========================
         #Camera Translation Plot.
         #========================
@@ -618,7 +625,10 @@ class Image:
         import pylab
         import math as ma
 
-        figCurrent = pltCurrent.figure()
+        if not self.figCurrent:
+            self.figCurrent = pltCurrent.figure()    
+        figCurrent = self. figCurrent
+        figCurrent.clf()
         axCurrent = figCurrent.gca(projection = '3d')
         axCurrent.set_xlabel('x')
         axCurrent.set_ylabel('z')
@@ -780,7 +790,11 @@ class Image:
         from mpl_toolkits.mplot3d import proj3d
         import pylab
         import math as ma
-        figCurrent = pltCurrent.figure()
+
+        if not self.figCurrentOrient:
+            self.figCurrentOrient = pltCurrent.figure()    
+        figCurrent = self.figCurrentOrient
+        figCurrent.clf()
         axCurrent = figCurrent.gca(projection = '3d')
         axCurrent.set_xlabel('x')
         axCurrent.set_ylabel('z')
